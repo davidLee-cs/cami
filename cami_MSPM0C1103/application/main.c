@@ -27,12 +27,16 @@ uint8_t gRxPacket[I2C_RX_MAX_PACKET_SIZE];
 /* Counters for TX length and bytes sent */
 uint32_t gRxLen, gRxCount;
 
+#define OPTTIME  50  // (60/0.2) = 300 
+// #define OPTTIME_1MIN  300  // (60/0.2) = 300 
 #define DELAY (48000000)
 bool bflag;
 
 uint16_t optid;
 uint16_t mxc1d;
 double optlux;
+uint16_t opt300checkCnt;
+volatile bool gTogglePolicy;
 
 int main(){
 
@@ -45,6 +49,14 @@ int main(){
     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
     // DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
     delay_cycles(DELAY);
+
+    gTogglePolicy = false;
+
+    NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
+    // NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
+
+    DL_TimerG_startCounter(TIMER_0_INST);
+    // DL_TimerG_startCounter(TIMER_1_INST);
 
     NVIC_EnableIRQ(I2C_INST_INT_IRQN);
     DL_SYSCTL_disableSleepOnExit();
@@ -67,49 +79,44 @@ int main(){
     // uint16_t mxc1d = mxc4005_readManufacturerID(&mxc_devReg);
     // double optlux = ti_opt3007_readLux();
     // mxc4005_readLux();
+    
+    opt300checkCnt = 1000;  // 첫번째 밝기 측정위해 설정
 
     while(1){
 
-        // if(bflag ^= 1)
-        // {
-        //     // DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-        //     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-
-        //     // optid = ti_opt3007_readManufacturerID(&devReg);
-
-        //     // mxc1d = mxc4005_readManufacturerID(&mxc_devReg);
-        //     // mxc1d = mxc4005_readDeviceID(&mxc_devReg);
-        //     mxc4005_readAccel();
-        // }
-        // else
-        // {
-        //     // DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-        //     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        //     optlux = ti_opt3007_readLux();
-        //     // mxc4005_readAccel();
-        // }
-
-        ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
-        optlux = ti_opt3007_readLux();
-        if(optlux < 100) {
-
-            for(i=0; i<10; i++)
-            {
-                if(bflag ^= 1) {
-                    DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // LED ON
-                }
-                else {                
-                    DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // LED OFF
-                }
-
-                delay_cycles(DELAY/20);
-            }
-            DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
-                    // __BKPT(0);
+        gTogglePolicy = false;
+        DL_SYSCTL_setPowerPolicySTANDBY0();
+        while (false == gTogglePolicy) {
+            __WFE();
         }
 
+        DL_SYSCTL_setPowerPolicyRUN0SLEEP0();     
+        // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // LED OFF
+
+        if(opt300checkCnt > OPTTIME)    // 10초
+        {            
+            ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
+            optlux = ti_opt3007_readLux();
+            if(optlux < 100) {
+
+                for(i=0; i<12; i++)
+                {
+                    DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                    delay_cycles(DELAY/20);
+                }
+                DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
+                        // __BKPT(0);
+            }
+
+            opt300checkCnt = 0;
+        }
+        
+        opt300checkCnt++;
+        mxc4005_powerUp(&mxc_devReg);
         mxc4005_readAccel();
-        delay_cycles(DELAY);
+        mxc4005_powerDown(&mxc_devReg);
+        // delay_cycles(DELAY);
     };
 
 //	printf("Manufacturer ID:0x%02x DeviceID:0x%02x\n",ti_opt3007_readManufacturerID(&devReg),ti_opt3007_readDeviceID(&devReg));
@@ -134,6 +141,38 @@ int main(){
 
 	return 0;
 }
+
+
+/**
+ * STANDBY0 Clock, runs all the time at the same frequency
+ */
+void TIMER_0_INST_IRQHandler(void)
+{
+    static uint32_t count = 5;
+    switch (DL_TimerG_getPendingInterrupt(TIMER_0_INST)) {
+        case DL_TIMERG_IIDX_ZERO:
+            
+            gTogglePolicy = true;
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ * SLEEP0 Clock, toggles LED in RUN0SLEEP0, does not toggles the LED
+ * when running in STANDBY0
+ */
+// void TIMER_1_INST_IRQHandler(void)
+// {
+//     switch (DL_TimerG_getPendingInterrupt(TIMER_1_INST)) {
+//         case DL_TIMERG_IIDX_ZERO:
+//             DL_GPIO_togglePins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
+//             break;
+//         default:
+//             break;
+//     }
+// }
 
 /* Interrupt handler for I2C */
 void I2C_INST_IRQHandler(void) {

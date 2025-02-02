@@ -6,6 +6,7 @@
  */
 
 #include "mxc4005_functions.h"
+#include "mxc4005_registers.h"
 
 #define XOUT_UPPER      (0x03)
 #define XOUT_LOWER      (0x04)
@@ -62,6 +63,14 @@ void mxc4005_readAccel(void){
 
 uint16_t mxc4005_readManufacturerID(mxc4005_registers* devReg){
 	return mxc4005_deviceRegister_read(&devReg->WAI);
+}
+
+uint16_t mxc4005_powerDown(mxc4005_registers* devReg){
+	 mxc4005_deviceRegister_write(&devReg->PD, 1);
+}
+
+uint16_t mxc4005_powerUp(mxc4005_registers* devReg){
+	 mxc4005_deviceRegister_write(&devReg->PD, 0);
 }
 
 // uint16_t mxc4005_readDeviceID(mxc4005_registers* devReg){
