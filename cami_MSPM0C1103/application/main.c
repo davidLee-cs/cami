@@ -1,11 +1,15 @@
 /*
- 
  main.c
  
-  2025.02.21
-  - 보쉬 bma530 센서로 교체 작업 완료 
+    2025.02.21
+    - 보쉬 bma530 센서로 교체 작업 완료
+
+    2025. 04.12 / 
+     - MSPM0L1104 로 교체
+     - 메모리 부족
 
  */
+
  #include "ti/driverlib/m0p/dl_core.h"
 #include "ti_msp_dl_config.h"
 #include "opt3007_registers.h"
@@ -14,22 +18,27 @@
 #include "math.h"
 #include "accelerometer.h"
 
-#if 1
 #define PI 3.14159265
 
-#define SAMPLE_SIZE         32              // FFT 샘플 수
-#define SAMPLE_DELAY_MS     20              // 20ms 간격 → 50Hz 샘플링
-#define FFT_THRESHOLD       6.0f            // 고주파 파워 임계값
-#define HIGH_FREQ_START_BIN 6               // 약 9.375Hz 이상 (bin 6~15 사용)
+#define SAMPLE_SIZE 64  // 샘플 수
+#define HIGH_FREQ_START_BIN 10  // 고주파 시작 인덱스 (예: 10Hz 이상)
+#define FFT_THRESHOLD 10.0f  // 임계값 설정
+
+// #define SAMPLE_SIZE         32              // FFT 샘플 수
+// #define FFT_THRESHOLD       6.0f            // 고주파 파워 임계값
+// #define HIGH_FREQ_START_BIN 6               // 약 9.375Hz 이상 (bin 6~15 사용)
+
+#define OPTTIME_19MIN  (50*60*10)  // (20ms x 50 = 1sec) = 60초 x 10 = 10분 
+#define OPTTIME_1MIN   (50*60)  // (20ms x 50 = 1sec) = 60초
+#define OPTTIME_10SEC  (50*10)  // (20ms x 50 = 1sec) * 10 = 10초
+
+#define DELAY (24000000)
 
 float z_samples[SAMPLE_SIZE];
 float fft_mag[SAMPLE_SIZE];
 
 float read_accel_z();
 void compute_fft(float in[], float out_mag[], int N);
-
-#endif
-
 
 //uint32_t gRxLen, gRxCount;
 void I2C_INST_IRQHandler(void);
@@ -44,12 +53,6 @@ uint32_t gTxLen, gTxCount;
 uint8_t gRxPacket[I2C_RX_MAX_PACKET_SIZE];
 /* Counters for TX length and bytes sent */
 uint32_t gRxLen, gRxCount;
-
-#define OPTTIME_19MIN  (50*60*10)  // (20ms x 50 = 1sec) = 60초 x 10 = 10분 
-#define OPTTIME_1MIN   (50*60)  // (20ms x 50 = 1sec) = 60초
-#define OPTTIME_10SEC  (50*10)  // (20ms x 50 = 1sec) * 10 = 10초
-
-#define DELAY (24000000)
 
 ti_opt3007_registers devReg;
 
@@ -86,43 +89,22 @@ int main(){
 
     gI2cControllerStatus = I2C_STATUS_IDLE;
 
-    // delay_cycles(DELAY/20);
+    ti_opt3007_registers devReg;
  
     bma530Accel_init();
-    ti_opt3007_registers devReg;
-
 	ti_opt3007_assignRegistermap(&devReg);
-	
-    // ti_opt3007_setSensorSingleShot(&devReg);
-    // while(1)
-    // {
-    //     // ti_opt3007_setSensorContinuous(&devReg);
-    //     ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
-    //     optlux = ti_opt3007_readLux();
-    //     delay_cycles(DELAY/20);
-    // }
-
-    // ti_opt3007_setSensorSingleShot(&devReg);
-    // // ti_opt3007_setSensorShutDown(&devReg);
-    // delay_cycles(DELAY/20);
-	// ti_opt3007_setSensorConversionTime100mS(&devReg);
-    // delay_cycles(DELAY/20);
     ti_opt3007_setRn(&devReg);	
 
     DL_TimerG_startCounter(TIMER_0_INST);
     // DL_TimerG_startCounter(TIMER_1_INST);
-    opt300checkCnt = 1000;  // 첫번째 밝기 측정위해 설정
-
+    opt300checkCnt = OPTTIME_1MIN - 1;  // 첫번째 밝기 측정위해 설정
     gTogglePolicy = false;
 
     while(1){
 
-        // DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN); // LED ON
         // while (false == gTogglePolicy) {
         //     __WFE();
         // }
-        
-        // ti_opt3007_setSensorShutDown(&devReg);
 
         gTogglePolicy = false;
         DL_SYSCTL_setPowerPolicySTANDBY0();
@@ -131,30 +113,18 @@ int main(){
         while (false == gTogglePolicy) {
             __WFE();
         }
-        gTogglePolicy = false;
-        // DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);   // LED OFF
 
+        // gTogglePolicy = false;
         DL_SYSCTL_setPowerPolicyRUN0SLEEP0();  
         // DL_TimerG_startCounter(TIMER_1_INST);   
 
-        // if(gToggleLed ^= 1)
-        // {
-        //     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        //     DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-
-        // }
-        // else {
-        //     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-        //     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        // }
-
-        if(opt300checkCnt++ >= OPTTIME_1MIN)    // 
+        if(opt300checkCnt++ >= OPTTIME_1MIN)    
         {            
             ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
             optlux = ti_opt3007_readLux();
 
             if(opt300checkCnt >= OPTTIME_1MIN + 10){
-                if(optlux < 5.0L) {
+                if(optlux < 30.0L) {
                     gLED_On = true;
                 }
                 else {
@@ -296,6 +266,16 @@ void I2C_INST_IRQHandler(void) {
 
 #if 1
 
+// 하이패스 필터 적용: 저주파 성분 제거
+void apply_high_pass_filter(float *fft_mag, int sample_size, int low_cutoff) {
+    // low_cutoff 이하의 주파수 성분을 0으로 설정
+    for (int i = 0; i < sample_size / 2; i++) {
+        if (i < low_cutoff) {
+            fft_mag[i] = 0;  // 저주파 성분 제거
+        }
+    }
+}
+
 // ---------------- FFT 함수 (고속 푸리에 변환) ----------------
 // 간단한 DFT (Demo용, 실제 프로젝트에선 CMSIS-DSP, KissFFT 추천)
 void compute_fft(float in[], float out_mag[], int N) {
@@ -324,13 +304,17 @@ float read_accel_z() {
 void detect_fish_bite_fft() {
     
         // 샘플 수집
-        static int samCnt=0;
+        static int samCnt=0;    
 
-        if(samCnt > 64){
+        if(samCnt >= SAMPLE_SIZE){
             samCnt = 0;
 
-                        // FFT 수행
+            // FFT 수행
             compute_fft(z_samples, fft_mag, SAMPLE_SIZE);
+
+            // 하이패스 필터 적용: 10Hz 이하의 성분 제거
+            int low_cutoff = 10;  // 10Hz 이하의 주파수는 필터링
+            apply_high_pass_filter(fft_mag, SAMPLE_SIZE, low_cutoff);
 
             // 고주파 대역의 파워 합산
             float high_freq_power = 0.0f;
