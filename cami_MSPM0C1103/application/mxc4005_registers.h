@@ -70,6 +70,8 @@ struct mxc4005_registers{
 
 typedef struct mxc4005_registers      mxc4005_registers;
 
+void mxc4005_pd_write(uint16_t addr, uint16_t value);
+// void mxc4005_pd_write(mxc4005_deviceRegister* devReg, uint16_t value);
 void     mxc4005_deviceRegister_write(mxc4005_deviceRegister *devReg,int16_t value);
 uint16_t mxc4005_deviceRegister_read(mxc4005_deviceRegister *devReg);
 void mxc4005_assignRegistermap(mxc4005_registers *devReg);

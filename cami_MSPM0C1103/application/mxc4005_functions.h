@@ -10,11 +10,13 @@
 
 #include "mxc4005_registers.h"
 
+
 void mxc4005_readAccel(void);
 uint16_t mxc4005_readManufacturerID(mxc4005_registers* devReg);
 uint16_t mxc4005_readDeviceID(mxc4005_registers* devReg);
-uint16_t mxc4005_powerDown(mxc4005_registers* devReg);
-uint16_t mxc4005_powerUp(mxc4005_registers* devReg);
+void mxc4005_powerDown(mxc4005_registers* devReg);
+void mxc4005_powerUp(mxc4005_registers* devReg);
+void mxc4005_readPD(void);
 
 extern int16_t accel_x;
 extern int16_t accel_y;

@@ -121,7 +121,7 @@ static const DL_TimerA_ClockConfig gTIMER_0ClockConfig = {
 
 /*
  * Timer load value (where the counter starts from) is calculated as (timerPeriod * timerClockFreq) - 1
- * TIMER_0_INST_LOAD_VALUE = (200ms * 992.969696969697 Hz) - 1
+ * TIMER_0_INST_LOAD_VALUE = (500ms * 992.969696969697 Hz) - 1
  */
 static const DL_TimerA_TimerConfig gTIMER_0TimerConfig = {
     .period     = TIMER_0_INST_LOAD_VALUE,
@@ -162,7 +162,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_I2C_init(void) {
     /* Set frequency to 400000 Hz*/
     DL_I2C_setTimerPeriod(I2C_INST, 5);
     DL_I2C_setControllerTXFIFOThreshold(I2C_INST, DL_I2C_TX_FIFO_LEVEL_EMPTY);
-    DL_I2C_setControllerRXFIFOThreshold(I2C_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
+    DL_I2C_setControllerRXFIFOThreshold(I2C_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_2);
     DL_I2C_enableControllerClockStretching(I2C_INST);
 
 

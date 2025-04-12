@@ -12,7 +12,7 @@
 #include "mxc4005_registers.h"
 #include "mxc4005_functions.h"
 #include "mxc4005_hostControl.h"
-
+#include "math.h"
 
 //uint32_t gRxLen, gRxCount;
 void I2C_INST_IRQHandler(void);
@@ -52,10 +52,10 @@ int main(){
 
     gTogglePolicy = false;
 
-    NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
+    // NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
     // NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
 
-    DL_TimerG_startCounter(TIMER_0_INST);
+    // DL_TimerG_startCounter(TIMER_0_INST);
     // DL_TimerG_startCounter(TIMER_1_INST);
 
     NVIC_EnableIRQ(I2C_INST_INT_IRQN);
@@ -63,59 +63,79 @@ int main(){
 
     gI2cControllerStatus = I2C_STATUS_IDLE;
 
+    delay_cycles(DELAY/20);
 //	printf("Testing code for OPT3007 C driver\n");
 	ti_opt3007_registers devReg;
     mxc4005_registers mxc_devReg;
     
 	ti_opt3007_assignRegistermap(&devReg);
-    mxc4005_assignRegistermap(&mxc_devReg);
+    // mxc4005_assignRegistermap(&mxc_devReg);
 
 	// ti_opt3007_setSensorContinuous(&devReg);
-    ti_opt3007_setSensorSingleShot(&devReg);
-	ti_opt3007_setSensorConversionTime100mS(&devReg);
+    // ti_opt3007_setSensorSingleShot(&devReg);
+    // ti_opt3007_setSensorShutDown(&devReg);
+    // delay_cycles(DELAY/20);
+	// ti_opt3007_setSensorConversionTime100mS(&devReg);
+    // delay_cycles(DELAY/20);
     // ti_opt3007_setRn(&devReg);	
 
-    // uint16_t optid = ti_opt3007_readManufacturerID(&devReg);
-    // uint16_t mxc1d = mxc4005_readManufacturerID(&mxc_devReg);
-    // double optlux = ti_opt3007_readLux();
-    // mxc4005_readLux();
-    
+    DL_TimerG_startCounter(TIMER_0_INST);
+    // DL_TimerG_startCounter(TIMER_1_INST);
     opt300checkCnt = 1000;  // 첫번째 밝기 측정위해 설정
 
+    // mxc4005_powerUp(&mxc_devReg);
+    // mxc4005_powerDown(&mxc_devReg);
     while(1){
 
+        // mxc4005_powerDown(&mxc_devReg);
+        DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN); // LED ON
         gTogglePolicy = false;
         DL_SYSCTL_setPowerPolicySTANDBY0();
         while (false == gTogglePolicy) {
             __WFE();
         }
-
+        DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);   // LED OFF
         DL_SYSCTL_setPowerPolicyRUN0SLEEP0();     
-        // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // LED OFF
+        // mxc4005_powerUp(&mxc_devReg);
 
-        if(opt300checkCnt > OPTTIME)    // 10초
+        // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+        // DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // LED OFF
+        // DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+
+#if 0
+        // if(opt300checkCnt > OPTTIME)    // 10초
         {            
             ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
             optlux = ti_opt3007_readLux();
-            if(optlux < 100) {
+            if(optlux < 5) {
 
-                for(i=0; i<12; i++)
-                {
-                    DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-                    delay_cycles(DELAY/20);
-                }
-                DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
+                // for(i=0; i<12; i++)
+                // {
+                //     DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                //     delay_cycles(DELAY/20);
+                // }
+                // DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
                         // __BKPT(0);
             }
 
             opt300checkCnt = 0;
         }
-        
+#endif
+
         opt300checkCnt++;
-        mxc4005_powerUp(&mxc_devReg);
-        mxc4005_readAccel();
-        mxc4005_powerDown(&mxc_devReg);
+        // delay_cycles(DELAY/100);
+        // mxc4005_readAccel();
+
+        // mxc4005_readPD();
+        // if(accel_y > 0){
+        //     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
+        //             // __BKPT(0);
+        // }
+        // else{
+        //     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);     // LED ON
+        // }
+
+    //    mxc4005_powerDown(&mxc_devReg);
         // delay_cycles(DELAY);
     };
 

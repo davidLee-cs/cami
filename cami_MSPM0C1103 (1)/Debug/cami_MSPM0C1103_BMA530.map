@@ -1,0 +1,563 @@
+******************************************************************************
+            TI ARM Clang Linker PC v4.0.1                      
+******************************************************************************
+>> Linked Sat Apr 12 15:22:40 2025
+
+OUTPUT FILE NAME:   <cami_MSPM0C1103_BMA530.out>
+ENTRY POINT SYMBOL: "_c_int00_noargs"  address: 00001cf1
+
+
+MEMORY CONFIGURATION
+
+         name            origin    length      used     unused   attr    fill
+----------------------  --------  ---------  --------  --------  ----  --------
+  FLASH                 00000000   00002000  00001e78  00000188  R  X
+  SRAM                  20000000   00000400  00000165  0000029b  RW X
+  BCR_CONFIG            41c00000   00000080  00000000  00000080  R   
+
+
+SEGMENT ALLOCATION MAP
+
+run origin  load origin   length   init length attrs members
+----------  ----------- ---------- ----------- ----- -------
+00000000    00000000    00001e78   00001e78    r-x
+  00000000    00000000    000000c0   000000c0    r-- .intvecs
+  000000c0    000000c0    00001d60   00001d60    r-x .text
+  00001e20    00001e20    00000020   00000020    r-- .rodata
+  00001e40    00001e40    00000038   00000038    r-- .cinit
+20000000    20000000    0000012c   00000000    rw-
+  20000000    20000000    000000a9   00000000    rw- .data
+  200000b0    200000b0    0000007c   00000000    rw- .bss
+200003c0    200003c0    00000040   00000000    rw-
+  200003c0    200003c0    00000040   00000000    rw- .stack
+
+
+SECTION ALLOCATION MAP
+
+ output                                  attributes/
+section   page    origin      length       input sections
+--------  ----  ----------  ----------   ----------------
+.intvecs   0    00000000    000000c0     
+                  00000000    000000c0     startup_mspm0c110x_ticlang.o (.intvecs)
+
+.text      0    000000c0    00001d60     
+                  000000c0    000003f8     common.o (.text.bma5_interface_init)
+                  000004b8    000000f4     bma5.o (.text.bma5_get_regs)
+                  000005ac    000000f4     common.o (.text.mspm0c1103_I2C_read)
+                  000006a0    000000f4     opt3007_registers.o (.text.ti_opt3007_assignRegistermap)
+                  00000794    000000e8     driverlib.a : dl_timer.o (.text.DL_Timer_initTimerMode)
+                  0000087c    000000e8     main.o (.text.main)
+                  00000964    000000e4     libclang_rt.builtins.a : muldf3.S.obj (.text.__muldf3)
+                  00000a48    000000e4     opt3007_hostControl.o (.text.ti_opt3007_I2C_read)
+                  00000b2c    000000e0     accelerometer.o (.text.bma530_readAccel)
+                  00000c0c    000000d8     libclang_rt.builtins.a : addsf3.S.obj (.text)
+                  00000ce4    000000d4     main.o (.text.I2C0_IRQHandler)
+                  00000db8    000000d0     accelerometer.o (.text.bma530Accel_init)
+                  00000e88    000000cc     bma530.o (.text.bma530_set_int_status)
+                  00000f54    000000b8     bma5.o (.text.bma5_get_int_conf)
+                  0000100c    000000aa     bma5.o (.text.bma5_set_int_conf)
+                  000010b6    00000002     startup_mspm0c110x_ticlang.o (.text.Default_Handler)
+                  000010b8    000000a8     common.o (.text.mspm0c1103_I2C_write)
+                  00001160    000000a4     bma530.o (.text.bma530_get_int_status)
+                  00001204    0000009c     opt3007_hostControl.o (.text.ti_opt3007_I2C_write)
+                  000012a0    0000009a     bma530.o (.text.bma530_set_int_map)
+                  0000133a    0000009a     libc.a : memcpy16.S.obj (.text:memcpy)
+                  000013d4    00000090     bma5.o (.text.bma5_get_acc)
+                  00001464    0000008c     libclang_rt.builtins.a : mulsf3.S.obj (.text.__mulsf3)
+                  000014f0    00000080     bma5.o (.text.bma5_get_acc_conf)
+                  00001570    0000007c     bma530.o (.text.bma530_get_int_map)
+                  000015ec    0000007c     libc.a : copy_decompress_lzss.c.obj (.text:decompress:lzss)
+                  00001668    00000076     bma5.o (.text.bma5_set_acc_conf)
+                  000016de    0000006c     bma530_features.o (.text.bma530_init)
+                  0000174a    00000002     libclang_rt.builtins.a : aeabi_div0.c.obj (.text.__aeabi_idiv0)
+                  0000174c    00000068     bma5.o (.text.bma5_get_sensor_status)
+                  000017b4    0000005e     driverlib.a : dl_i2c.o (.text.DL_I2C_fillControllerTXFIFO)
+                  00001812    0000005c     common.o (.text.bma5_delay_us)
+                  0000186e    00000002     --HOLE-- [fill = 0]
+                  00001870    0000005c     bma5.o (.text.bma5_get_acc_conf_0)
+                  000018cc    00000058     ti_msp_dl_config.o (.text.SYSCFG_DL_I2C_init)
+                  00001924    00000050     bma5.o (.text.bma5_set_sensor_status)
+                  00001974    0000004c     opt3007_registers.o (.text.ti_opt3007_deviceRegister_write)
+                  000019c0    00000044     bma5.o (.text.bma5_set_regs)
+                  00001a04    00000044     opt3007_functions.o (.text.ti_opt3007_readLux)
+                  00001a48    00000042     bma5.o (.text.bma5_set_acc_conf_0)
+                  00001a8a    00000002     --HOLE-- [fill = 0]
+                  00001a8c    00000040     ti_msp_dl_config.o (.text.SYSCFG_DL_SYSCTL_init)
+                  00001acc    00000040     libclang_rt.builtins.a : aeabi_uidivmod.S.obj (.text.__aeabi_uidivmod)
+                  00001b0c    0000003c                            : floatsisf.S.obj (.text.__floatsisf)
+                  00001b48    0000003c     libc.a : autoinit.c.obj (.text:__TI_auto_init_nobinit_nopinit)
+                  00001b84    0000003a     libclang_rt.builtins.a : muldsi3.S.obj (.text.__muldsi3)
+                  00001bbe    00000002     --HOLE-- [fill = 0]
+                  00001bc0    00000038     driverlib.a : dl_sysctl_mspm0c110x.o (.text.DL_SYSCTL_switchMCLKfromLFCLKtoSYSOSC)
+                  00001bf8    00000038     ti_msp_dl_config.o (.text.SYSCFG_DL_GPIO_init)
+                  00001c30    00000038     ti_msp_dl_config.o (.text.SYSCFG_DL_TIMER_0_init)
+                  00001c68    00000034     ti_msp_dl_config.o (.text.SYSCFG_DL_initPower)
+                  00001c9c    0000002c     libclang_rt.builtins.a : floatsidf.S.obj (.text.__floatsidf)
+                  00001cc8    00000028     main.o (.text.TIMG14_IRQHandler)
+                  00001cf0    00000028     libc.a : boot_cortex_m.c.obj (.text:_c_int00_noargs)
+                  00001d18    00000026     driverlib.a : dl_i2c.o (.text.DL_I2C_setClockConfig)
+                  00001d3e    00000002     --HOLE-- [fill = 0]
+                  00001d40    00000024     libclang_rt.builtins.a : floatunsidf.S.obj (.text.__floatunsidf)
+                  00001d64    0000001c     driverlib.a : dl_timer.o (.text.DL_Timer_setClockConfig)
+                  00001d80    00000018     ti_msp_dl_config.o (.text.SYSCFG_DL_init)
+                  00001d98    00000016     libc.a : copy_zero_init.c.obj (.text:decompress:ZI:__TI_zero_init_nomemset)
+                  00001dae    00000014     common.o (.text.bma5_i2c_read)
+                  00001dc2    00000014     common.o (.text.bma5_i2c_write)
+                  00001dd6    00000012     libc.a : copy_decompress_none.c.obj (.text:decompress:none)
+                  00001de8    0000000c     opt3007_functions.o (.text.ti_opt3007_setRn)
+                  00001df4    0000000c     opt3007_functions.o (.text.ti_opt3007_setSensorSingleShot)
+                  00001e00    0000000a     driverlib.a : dl_common.o (.text.DL_Common_delayCycles)
+                  00001e0a    00000002     --HOLE-- [fill = 0]
+                  00001e0c    00000008     libclang_rt.builtins.a : aeabi_memcpy.S.obj (.text.__aeabi_memcpy)
+                  00001e14    00000004     startup_mspm0c110x_ticlang.o (.text.Reset_Handler)
+                  00001e18    00000004     libc.a : pre_init.c.obj (.text._system_pre_init)
+                  00001e1c    00000004            : exit.c.obj (.text:abort)
+
+.cinit     0    00001e40    00000038     
+                  00001e40    0000000d     (.cinit..data.load) [load image, compression = lzss]
+                  00001e4d    00000003     --HOLE-- [fill = 0]
+                  00001e50    0000000c     (__TI_handler_table)
+                  00001e5c    00000008     (.cinit..bss.load) [load image, compression = zero_init]
+                  00001e64    00000010     (__TI_cinit_table)
+                  00001e74    00000004     --HOLE-- [fill = 0]
+
+.rodata    0    00001e20    00000020     
+                  00001e20    00000014     ti_msp_dl_config.o (.rodata.gTIMER_0TimerConfig)
+                  00001e34    00000003     ti_msp_dl_config.o (.rodata.gTIMER_0ClockConfig)
+                  00001e37    00000002     ti_msp_dl_config.o (.rodata.gI2CClockConfig)
+                  00001e39    00000007     --HOLE-- [fill = 0]
+
+.init_array 
+*          0    00000000    00000000     UNINITIALIZED
+
+.binit     0    00000000    00000000     
+
+.data      0    20000000    000000a9     UNINITIALIZED
+                  20000000    00000080     bma5.o (.data.temp_buf)
+                  20000080    00000010     main.o (.data.gTxPacket)
+                  20000090    0000000c     accelerometer.o (.data.cami_accel)
+                  2000009c    00000006     bma5.o (.data.acceldata)
+                  200000a2    00000001     accelerometer.o (.data.loop)
+                  200000a3    00000001     accelerometer.o (.data.n_conf)
+                  200000a4    00000004     main.o (.data.TIMG14_IRQHandler.count)
+                  200000a8    00000001     accelerometer.o (.data.n_status)
+
+.bss       0    200000b0    0000007c     UNINITIALIZED
+                  200000b0    00000018     (.common:dev)
+                  200000c8    00000010     (.common:gRxPacket)
+                  200000d8    0000000e     (.common:int_status)
+                  200000e6    0000000d     (.common:int_map)
+                  200000f3    00000005     (.common:txBuffer)
+                  200000f8    00000008     (.common:optlux)
+                  20000100    00000007     (.common:acc_cfg)
+                  20000107    00000001     common.o (.bss.dev_addr)
+                  20000108    00000006     (.common:sens_data)
+                  2000010e    00000002     (.common:opt300checkCnt)
+                  20000110    00000004     (.common:gRxCount)
+                  20000114    00000004     (.common:gRxLen)
+                  20000118    00000004     (.common:gTxCount)
+                  2000011c    00000004     (.common:gTxLen)
+                  20000120    00000004     (.common:int_config)
+                  20000124    00000003     (.common:status)
+                  20000127    00000001     (.common:gI2cControllerStatus)
+                  20000128    00000001     (.common:gTogglePolicy)
+                  20000129    00000001     (.common:resAddr)
+                  2000012a    00000001     (.common:rslt)
+                  2000012b    00000001     (.common:sensor_ctrl)
+
+.stack     0    200003c0    00000040     UNINITIALIZED
+                  200003c0    00000004     libc.a : boot_cortex_m.c.obj (.stack)
+                  200003c4    0000003c     --HOLE--
+
+__llvm_prf_cnts 
+*          0    20000000    00000000     UNINITIALIZED
+
+__llvm_prf_bits 
+*          0    20000000    00000000     UNINITIALIZED
+
+MODULE SUMMARY
+
+       Module                         code   ro data   rw data
+       ------                         ----   -------   -------
+    .\
+       ti_msp_dl_config.o             340    25        0      
+       startup_mspm0c110x_ticlang.o   6      192       0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         346    217       0      
+                                                              
+    .\application\
+       common.o                       1560   0         1      
+       bma5.o                         1398   0         134    
+       bma530.o                       646    0         0      
+       main.o                         484    0         64     
+       accelerometer.o                432    0         88     
+       opt3007_hostControl.o          384    0         6      
+       opt3007_registers.o            320    0         0      
+       bma530_features.o              108    0         0      
+       opt3007_functions.o            92     0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         5424   0         293    
+                                                              
+    C:/ti/mspm0_sdk_2_03_00_07/source/ti/driverlib/lib/ticlang/m0p/mspm0c110x/driverlib.a
+       dl_timer.o                     260    0         0      
+       dl_i2c.o                       132    0         0      
+       dl_sysctl_mspm0c110x.o         56     0         0      
+       dl_common.o                    10     0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         458    0         0      
+                                                              
+    C:\ti\ccs2001\ccs\tools\compiler\ti-cgt-armllvm_4.0.1.LTS\lib\armv6m-ti-none-eabi/c/libc.a
+       memcpy16.S.obj                 154    0         0      
+       copy_decompress_lzss.c.obj     124    0         0      
+       autoinit.c.obj                 60     0         0      
+       boot_cortex_m.c.obj            40     0         0      
+       copy_zero_init.c.obj           22     0         0      
+       copy_decompress_none.c.obj     18     0         0      
+       exit.c.obj                     4      0         0      
+       pre_init.c.obj                 4      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         426    0         0      
+                                                              
+    C:\ti\ccs2001\ccs\tools\compiler\ti-cgt-armllvm_4.0.1.LTS\lib\armv6m-ti-none-eabi/libclang_rt.builtins.a
+       muldf3.S.obj                   228    0         0      
+       addsf3.S.obj                   216    0         0      
+       mulsf3.S.obj                   140    0         0      
+       aeabi_uidivmod.S.obj           64     0         0      
+       floatsisf.S.obj                60     0         0      
+       muldsi3.S.obj                  58     0         0      
+       floatsidf.S.obj                44     0         0      
+       floatunsidf.S.obj              36     0         0      
+       aeabi_memcpy.S.obj             8      0         0      
+       aeabi_div0.c.obj               2      0         0      
+    +--+------------------------------+------+---------+---------+
+       Total:                         856    0         0      
+                                                              
+       Stack:                         0      0         64     
+       Linker Generated:              0      49        0      
+    +--+------------------------------+------+---------+---------+
+       Grand Total:                   7510   266       357    
+
+
+LINKER GENERATED COPY TABLES
+
+__TI_cinit_table @ 00001e64 records: 2, size/record: 8, table size: 16
+	.data: load addr=00001e40, load size=0000000d bytes, run addr=20000000, run size=000000a9 bytes, compression=lzss
+	.bss: load addr=00001e5c, load size=00000008 bytes, run addr=200000b0, run size=0000007c bytes, compression=zero_init
+
+
+LINKER GENERATED HANDLER TABLE
+
+__TI_handler_table @ 00001e50 records: 3, size/record: 4, table size: 12
+	index: 0, handler: __TI_decompress_lzss
+	index: 1, handler: __TI_decompress_none
+	index: 2, handler: __TI_zero_init
+
+
+GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
+
+address   name                                 
+-------   ----                                 
+000010b7  ADC0_IRQHandler                      
+00001e1c  C$$EXIT                              
+00001e01  DL_Common_delayCycles                
+000017b5  DL_I2C_fillControllerTXFIFO          
+00001d19  DL_I2C_setClockConfig                
+00001bc1  DL_SYSCTL_switchMCLKfromLFCLKtoSYSOSC
+00000795  DL_Timer_initTimerMode               
+00001d65  DL_Timer_setClockConfig              
+000010b7  DMA_IRQHandler                       
+000010b7  Default_Handler                      
+000010b7  GPIOA_IRQHandler                     
+000010b7  GROUP0_IRQHandler                    
+000010b7  HardFault_Handler                    
+00000ce5  I2C0_IRQHandler                      
+000010b7  NMI_Handler                          
+000010b7  PendSV_Handler                       
+00001e15  Reset_Handler                        
+000010b7  SPI0_IRQHandler                      
+000010b7  SVC_Handler                          
+00001bf9  SYSCFG_DL_GPIO_init                  
+000018cd  SYSCFG_DL_I2C_init                   
+00001a8d  SYSCFG_DL_SYSCTL_init                
+00001c31  SYSCFG_DL_TIMER_0_init               
+00001d81  SYSCFG_DL_init                       
+00001c69  SYSCFG_DL_initPower                  
+000010b7  SysTick_Handler                      
+000010b7  TIMA0_IRQHandler                     
+00001cc9  TIMG14_IRQHandler                    
+000010b7  TIMG8_IRQHandler                     
+000010b7  UART0_IRQHandler                     
+20000400  __STACK_END                          
+00000040  __STACK_SIZE                         
+00000000  __TI_ATRegion0_region_sz             
+00000000  __TI_ATRegion0_src_addr              
+00000000  __TI_ATRegion0_trg_addr              
+00000000  __TI_ATRegion1_region_sz             
+00000000  __TI_ATRegion1_src_addr              
+00000000  __TI_ATRegion1_trg_addr              
+00000000  __TI_ATRegion2_region_sz             
+00000000  __TI_ATRegion2_src_addr              
+00000000  __TI_ATRegion2_trg_addr              
+00001e64  __TI_CINIT_Base                      
+00001e74  __TI_CINIT_Limit                     
+00001e74  __TI_CINIT_Warm                      
+00001e50  __TI_Handler_Table_Base              
+00001e5c  __TI_Handler_Table_Limit             
+00001b49  __TI_auto_init_nobinit_nopinit       
+000015ed  __TI_decompress_lzss                 
+00001dd7  __TI_decompress_none                 
+ffffffff  __TI_pprof_out_hndl                  
+ffffffff  __TI_prof_data_size                  
+ffffffff  __TI_prof_data_start                 
+00000000  __TI_static_base__                   
+00001d99  __TI_zero_init_nomemset              
+00000c17  __addsf3                             
+00000965  __aeabi_dmul                         
+00000c17  __aeabi_fadd                         
+00001465  __aeabi_fmul                         
+00000c0d  __aeabi_fsub                         
+00001c9d  __aeabi_i2d                          
+00001b0d  __aeabi_i2f                          
+0000174b  __aeabi_idiv0                        
+00001e0d  __aeabi_memcpy                       
+00001e0d  __aeabi_memcpy4                      
+00001e0d  __aeabi_memcpy8                      
+00001d41  __aeabi_ui2d                         
+00001acd  __aeabi_uidiv                        
+00001acd  __aeabi_uidivmod                     
+ffffffff  __binit__                            
+00001c9d  __floatsidf                          
+00001b0d  __floatsisf                          
+00001d41  __floatunsidf                        
+UNDEFED   __mpu_init                           
+00000965  __muldf3                             
+00001b85  __muldsi3                            
+00001465  __mulsf3                             
+200003c0  __stack                              
+20000000  __start___llvm_prf_bits              
+20000000  __start___llvm_prf_cnts              
+20000000  __stop___llvm_prf_bits               
+20000000  __stop___llvm_prf_cnts               
+00000c0d  __subsf3                             
+00001cf1  _c_int00_noargs                      
+UNDEFED   _system_post_cinit                   
+00001e19  _system_pre_init                     
+00001e1d  abort                                
+20000100  acc_cfg                              
+2000009c  acceldata                            
+ffffffff  binit                                
+00000db9  bma530Accel_init                     
+00001571  bma530_get_int_map                   
+00001161  bma530_get_int_status                
+000016df  bma530_init                          
+00000b2d  bma530_readAccel                     
+000012a1  bma530_set_int_map                   
+00000e89  bma530_set_int_status                
+00001813  bma5_delay_us                        
+000013d5  bma5_get_acc                         
+000014f1  bma5_get_acc_conf                    
+00001871  bma5_get_acc_conf_0                  
+00000f55  bma5_get_int_conf                    
+000004b9  bma5_get_regs                        
+0000174d  bma5_get_sensor_status               
+00001daf  bma5_i2c_read                        
+00001dc3  bma5_i2c_write                       
+000000c1  bma5_interface_init                  
+00001669  bma5_set_acc_conf                    
+00001a49  bma5_set_acc_conf_0                  
+0000100d  bma5_set_int_conf                    
+000019c1  bma5_set_regs                        
+00001925  bma5_set_sensor_status               
+20000090  cami_accel                           
+200000b0  dev                                  
+20000127  gI2cControllerStatus                 
+20000110  gRxCount                             
+20000114  gRxLen                               
+200000c8  gRxPacket                            
+20000128  gTogglePolicy                        
+20000118  gTxCount                             
+2000011c  gTxLen                               
+20000080  gTxPacket                            
+20000120  int_config                           
+200000e6  int_map                              
+200000d8  int_status                           
+00000000  interruptVectors                     
+200000a2  loop                                 
+0000087d  main                                 
+0000133b  memcpy                               
+000005ad  mspm0c1103_I2C_read                  
+000010b9  mspm0c1103_I2C_write                 
+200000a3  n_conf                               
+200000a8  n_status                             
+2000010e  opt300checkCnt                       
+200000f8  optlux                               
+20000129  resAddr                              
+2000012a  rslt                                 
+20000108  sens_data                            
+2000012b  sensor_ctrl                          
+20000124  status                               
+20000000  temp_buf                             
+00000a49  ti_opt3007_I2C_read                  
+00001205  ti_opt3007_I2C_write                 
+000006a1  ti_opt3007_assignRegistermap         
+00001975  ti_opt3007_deviceRegister_write      
+00001a05  ti_opt3007_readLux                   
+00001de9  ti_opt3007_setRn                     
+00001df5  ti_opt3007_setSensorSingleShot       
+200000f3  txBuffer                             
+
+
+GLOBAL SYMBOLS: SORTED BY Symbol Address 
+
+address   name                                 
+-------   ----                                 
+00000000  __TI_ATRegion0_region_sz             
+00000000  __TI_ATRegion0_src_addr              
+00000000  __TI_ATRegion0_trg_addr              
+00000000  __TI_ATRegion1_region_sz             
+00000000  __TI_ATRegion1_src_addr              
+00000000  __TI_ATRegion1_trg_addr              
+00000000  __TI_ATRegion2_region_sz             
+00000000  __TI_ATRegion2_src_addr              
+00000000  __TI_ATRegion2_trg_addr              
+00000000  __TI_static_base__                   
+00000000  interruptVectors                     
+00000040  __STACK_SIZE                         
+000000c1  bma5_interface_init                  
+000004b9  bma5_get_regs                        
+000005ad  mspm0c1103_I2C_read                  
+000006a1  ti_opt3007_assignRegistermap         
+00000795  DL_Timer_initTimerMode               
+0000087d  main                                 
+00000965  __aeabi_dmul                         
+00000965  __muldf3                             
+00000a49  ti_opt3007_I2C_read                  
+00000b2d  bma530_readAccel                     
+00000c0d  __aeabi_fsub                         
+00000c0d  __subsf3                             
+00000c17  __addsf3                             
+00000c17  __aeabi_fadd                         
+00000ce5  I2C0_IRQHandler                      
+00000db9  bma530Accel_init                     
+00000e89  bma530_set_int_status                
+00000f55  bma5_get_int_conf                    
+0000100d  bma5_set_int_conf                    
+000010b7  ADC0_IRQHandler                      
+000010b7  DMA_IRQHandler                       
+000010b7  Default_Handler                      
+000010b7  GPIOA_IRQHandler                     
+000010b7  GROUP0_IRQHandler                    
+000010b7  HardFault_Handler                    
+000010b7  NMI_Handler                          
+000010b7  PendSV_Handler                       
+000010b7  SPI0_IRQHandler                      
+000010b7  SVC_Handler                          
+000010b7  SysTick_Handler                      
+000010b7  TIMA0_IRQHandler                     
+000010b7  TIMG8_IRQHandler                     
+000010b7  UART0_IRQHandler                     
+000010b9  mspm0c1103_I2C_write                 
+00001161  bma530_get_int_status                
+00001205  ti_opt3007_I2C_write                 
+000012a1  bma530_set_int_map                   
+0000133b  memcpy                               
+000013d5  bma5_get_acc                         
+00001465  __aeabi_fmul                         
+00001465  __mulsf3                             
+000014f1  bma5_get_acc_conf                    
+00001571  bma530_get_int_map                   
+000015ed  __TI_decompress_lzss                 
+00001669  bma5_set_acc_conf                    
+000016df  bma530_init                          
+0000174b  __aeabi_idiv0                        
+0000174d  bma5_get_sensor_status               
+000017b5  DL_I2C_fillControllerTXFIFO          
+00001813  bma5_delay_us                        
+00001871  bma5_get_acc_conf_0                  
+000018cd  SYSCFG_DL_I2C_init                   
+00001925  bma5_set_sensor_status               
+00001975  ti_opt3007_deviceRegister_write      
+000019c1  bma5_set_regs                        
+00001a05  ti_opt3007_readLux                   
+00001a49  bma5_set_acc_conf_0                  
+00001a8d  SYSCFG_DL_SYSCTL_init                
+00001acd  __aeabi_uidiv                        
+00001acd  __aeabi_uidivmod                     
+00001b0d  __aeabi_i2f                          
+00001b0d  __floatsisf                          
+00001b49  __TI_auto_init_nobinit_nopinit       
+00001b85  __muldsi3                            
+00001bc1  DL_SYSCTL_switchMCLKfromLFCLKtoSYSOSC
+00001bf9  SYSCFG_DL_GPIO_init                  
+00001c31  SYSCFG_DL_TIMER_0_init               
+00001c69  SYSCFG_DL_initPower                  
+00001c9d  __aeabi_i2d                          
+00001c9d  __floatsidf                          
+00001cc9  TIMG14_IRQHandler                    
+00001cf1  _c_int00_noargs                      
+00001d19  DL_I2C_setClockConfig                
+00001d41  __aeabi_ui2d                         
+00001d41  __floatunsidf                        
+00001d65  DL_Timer_setClockConfig              
+00001d81  SYSCFG_DL_init                       
+00001d99  __TI_zero_init_nomemset              
+00001daf  bma5_i2c_read                        
+00001dc3  bma5_i2c_write                       
+00001dd7  __TI_decompress_none                 
+00001de9  ti_opt3007_setRn                     
+00001df5  ti_opt3007_setSensorSingleShot       
+00001e01  DL_Common_delayCycles                
+00001e0d  __aeabi_memcpy                       
+00001e0d  __aeabi_memcpy4                      
+00001e0d  __aeabi_memcpy8                      
+00001e15  Reset_Handler                        
+00001e19  _system_pre_init                     
+00001e1c  C$$EXIT                              
+00001e1d  abort                                
+00001e50  __TI_Handler_Table_Base              
+00001e5c  __TI_Handler_Table_Limit             
+00001e64  __TI_CINIT_Base                      
+00001e74  __TI_CINIT_Limit                     
+00001e74  __TI_CINIT_Warm                      
+20000000  __start___llvm_prf_bits              
+20000000  __start___llvm_prf_cnts              
+20000000  __stop___llvm_prf_bits               
+20000000  __stop___llvm_prf_cnts               
+20000000  temp_buf                             
+20000080  gTxPacket                            
+20000090  cami_accel                           
+2000009c  acceldata                            
+200000a2  loop                                 
+200000a3  n_conf                               
+200000a8  n_status                             
+200000b0  dev                                  
+200000c8  gRxPacket                            
+200000d8  int_status                           
+200000e6  int_map                              
+200000f3  txBuffer                             
+200000f8  optlux                               
+20000100  acc_cfg                              
+20000108  sens_data                            
+2000010e  opt300checkCnt                       
+20000110  gRxCount                             
+20000114  gRxLen                               
+20000118  gTxCount                             
+2000011c  gTxLen                               
+20000120  int_config                           
+20000124  status                               
+20000127  gI2cControllerStatus                 
+20000128  gTogglePolicy                        
+20000129  resAddr                              
+2000012a  rslt                                 
+2000012b  sensor_ctrl                          
+200003c0  __stack                              
+20000400  __STACK_END                          
+ffffffff  __TI_pprof_out_hndl                  
+ffffffff  __TI_prof_data_size                  
+ffffffff  __TI_prof_data_start                 
+ffffffff  __binit__                            
+ffffffff  binit                                
+UNDEFED   __mpu_init                           
+UNDEFED   _system_post_cinit                   
+
+[148 symbols]

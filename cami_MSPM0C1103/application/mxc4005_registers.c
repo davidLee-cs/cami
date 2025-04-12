@@ -5,6 +5,17 @@
 
 #include "mxc4005_registers.h"
 
+
+void mxc4005_pd_write(uint16_t addr, uint16_t value){
+	uint16_t mask;
+	uint16_t readValue;
+	uint16_t writeValue;
+	uint16_t regmask;
+	uint8_t size;
+	/// <b>Algorithm of the method is as follows</b>
+	mxc4005_I2C_write(addr,value); /// * Initiates I2C write to device
+}
+
 void mxc4005_deviceRegister_write(mxc4005_deviceRegister* devReg,int16_t value){
 	uint16_t mask;
 	uint16_t readValue;

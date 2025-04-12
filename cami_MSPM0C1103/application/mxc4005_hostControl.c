@@ -5,13 +5,15 @@
 
 #include "mxc4005_hostControl.h"
 
+
+uint16_t ax, ay, az;
 uint16_t mxc4005_I2C_read(uint8_t registerAddress){
 	//I2C read operation and return uint16_t value as per datasheet
 	// Data should be in first byte received from I2C denotes 15:8 and 2nd byte from I2C denotes 7:0
 	uint16_t returnValue=0;
 	uint16_t gRxLen = 2;	// default
 
-	mxc4005_I2C_write(registerAddress, 0);	// for read Register
+	mxc4005_I2C_write(registerAddress, 0xFF);	// for read Register
 	
     /* Send a read request to Target */
     DL_I2C_startControllerTransfer(I2C_INST, MXC4005_BUSADDRESS,
@@ -24,7 +26,10 @@ uint16_t mxc4005_I2C_read(uint8_t registerAddress){
     }
 
 	returnValue = gRxPacket[0] << 8 | gRxPacket[1];
-	return returnValue;
+	// ax = gRxPacket[0] << 8 | gRxPacket[1];
+    // ay = gRxPacket[2] << 8 | gRxPacket[3];
+    // az = gRxPacket[4] << 8 | gRxPacket[5];
+    return returnValue;
 
 }
 void mxc4005_I2C_write(uint8_t registerAddress,uint16_t value){
@@ -32,13 +37,13 @@ void mxc4005_I2C_write(uint8_t registerAddress,uint16_t value){
     uint32_t gTxLen, gTxCount;
 	uint16_t length;
 
-	if(value == 0)
+	if(value == 0xFF)
 	{
 		length = 1;		// for read mode
 	}
 	else
 	{
-		length = 3;
+		length = 2; //3 -> 2
 	}
 
 	uint8_t txBuffer[1 + length];
