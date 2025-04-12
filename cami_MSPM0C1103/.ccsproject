@@ -10,7 +10,7 @@
 	<ignoreDefaultDeviceSettings value="true"/>
 	<ignoreDefaultCCSSettings value="true"/>
 	<templateProperties value="id=i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang.projectspec.i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang,buildProfile=release,isHybrid=true"/>
-	<activeTargetConfiguration value="targetConfigs/MSPM0C1103.ccxml"/>
+	<activeTargetConfiguration value="targetConfigs/MSPM0C1104.ccxml"/>
 	<isTargetConfigurationManual value="false"/>
 	<sourceLookupPath value="${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/ti/driverlib"/>
 	<origin value="/mnt/tirex-content/mspm0_sdk_2_03_00_07/examples/nortos/LP_MSPM0C1104/driverlib/i2c_controller_rw_multibyte_fifo_interrupts/ticlang/i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang.projectspec"/>
