@@ -14,5 +14,4 @@ void bma530_readAccel(void);
 
 extern float cami_accel[3];
 
-
 #endif

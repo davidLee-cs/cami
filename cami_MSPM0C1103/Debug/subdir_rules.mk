@@ -5,19 +5,19 @@
 SHELL = cmd.exe
 
 # Each subdirectory must supply rules for building sources it contributes
-build-672132175: ../i2c_controller_rw_multibyte_fifo_interrupts.syscfg
+build-1100386207: ../cami_MSPM0C1103.syscfg
 	@echo 'Building file: "$<"'
 	@echo 'Invoking: SysConfig'
-	"C:/ti/ccs2001/ccs/utils/sysconfig_1.22.0/sysconfig_cli.bat" --script "C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/i2c_controller_rw_multibyte_fifo_interrupts.syscfg" -o "." -s "C:/ti/mspm0_sdk_2_04_00_06/.metadata/product.json" -d "MSPM0C110X" -p "WSON-8(DSG)" -r "Default" --context "system" --compiler ticlang
+	"C:/ti/ccs2001/ccs/utils/sysconfig_1.22.0/sysconfig_cli.bat" --script "C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/cami_MSPM0C1103.syscfg" -o "." -s "C:/ti/mspm0_sdk_2_04_00_06/.metadata/product.json" -d "MSPM0C110X" -p "WSON-8(DSG)" -r "Default" --context "system" --compiler ticlang
 	@echo 'Finished building: "$<"'
 	@echo ' '
 
-device_linker.cmd: build-672132175 ../i2c_controller_rw_multibyte_fifo_interrupts.syscfg
-device.opt: build-672132175
-device.cmd.genlibs: build-672132175
-ti_msp_dl_config.c: build-672132175
-ti_msp_dl_config.h: build-672132175
-Event.dot: build-672132175
+device_linker.cmd: build-1100386207 ../cami_MSPM0C1103.syscfg
+device.opt: build-1100386207
+device.cmd.genlibs: build-1100386207
+ti_msp_dl_config.c: build-1100386207
+ti_msp_dl_config.h: build-1100386207
+Event.dot: build-1100386207
 
 %.o: ./%.c $(GEN_OPTS) | $(GEN_FILES) $(GEN_MISC_FILES)
 	@echo 'Building file: "$<"'

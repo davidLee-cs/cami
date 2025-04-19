@@ -96,7 +96,8 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 SYSCONFIG_WEAK void SYSCFG_DL_SYSCTL_init(void)
 {
 
-	//Low Power Mode is configured to be SLEEP0
+	//Low Power Mode is configured to be STANDBY0
+    DL_SYSCTL_setPowerPolicySTANDBY0();
     DL_SYSCTL_setBORThreshold(DL_SYSCTL_BOR_THRESHOLD_LEVEL_0);
     DL_SYSCTL_disableNRSTPin();
 
@@ -110,17 +111,17 @@ SYSCONFIG_WEAK void SYSCFG_DL_SYSCTL_init(void)
 /*
  * Timer clock configuration to be sourced by LFCLK /  (32768 Hz)
  * timerClkFreq = (timerClkSrc / (timerClkDivRatio * (timerClkPrescale + 1)))
- *   32768 Hz = 32768 Hz / (1 * (0 + 1))
+ *   992.969696969697 Hz = 32768 Hz / (1 * (32 + 1))
  */
 static const DL_TimerG_ClockConfig gTIMER_0ClockConfig = {
     .clockSel    = DL_TIMER_CLOCK_LFCLK,
     .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
-    .prescale    = 0U,
+    .prescale    = 32U,
 };
 
 /*
  * Timer load value (where the counter starts from) is calculated as (timerPeriod * timerClockFreq) - 1
- * TIMER_0_INST_LOAD_VALUE = (20 ms * 32768 Hz) - 1
+ * TIMER_0_INST_LOAD_VALUE = (100ms * 992.969696969697 Hz) - 1
  */
 static const DL_TimerG_TimerConfig gTIMER_0TimerConfig = {
     .period     = TIMER_0_INST_LOAD_VALUE,
@@ -135,6 +136,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_TIMER_0_init(void) {
 
     DL_TimerG_initTimerMode(TIMER_0_INST,
         (DL_TimerG_TimerConfig *) &gTIMER_0TimerConfig);
+    DL_TimerG_enableInterrupt(TIMER_0_INST , DL_TIMERG_INTERRUPT_ZERO_EVENT);
     DL_TimerG_enableClock(TIMER_0_INST);
 
 
@@ -162,14 +164,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_I2C_init(void) {
     DL_I2C_setControllerTXFIFOThreshold(I2C_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_1);
     DL_I2C_setControllerRXFIFOThreshold(I2C_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
     DL_I2C_enableControllerClockStretching(I2C_INST);
-
-    /* Configure Interrupts */
-    DL_I2C_enableInterrupt(I2C_INST,
-                           DL_I2C_INTERRUPT_CONTROLLER_ARBITRATION_LOST |
-                           DL_I2C_INTERRUPT_CONTROLLER_NACK |
-                           DL_I2C_INTERRUPT_CONTROLLER_RXFIFO_TRIGGER |
-                           DL_I2C_INTERRUPT_CONTROLLER_RX_DONE |
-                           DL_I2C_INTERRUPT_CONTROLLER_TX_DONE);
 
 
     /* Enable module */
