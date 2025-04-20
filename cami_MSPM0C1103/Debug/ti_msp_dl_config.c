@@ -50,33 +50,30 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_GPIO_init();
     /* Module-Specific Initializations*/
     SYSCFG_DL_SYSCTL_init();
-    SYSCFG_DL_TIMER_0_init();
     SYSCFG_DL_I2C_init();
+    SYSCFG_DL_TIMER_0_init();
 }
 
 SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
 {
     DL_GPIO_reset(GPIOA);
-    DL_TimerG_reset(TIMER_0_INST);
     DL_I2C_reset(I2C_INST);
+    DL_TimerG_reset(TIMER_0_INST);
 
     DL_GPIO_enablePower(GPIOA);
-    DL_TimerG_enablePower(TIMER_0_INST);
     DL_I2C_enablePower(I2C_INST);
+    DL_TimerG_enablePower(TIMER_0_INST);
     delay_cycles(POWER_STARTUP_DELAY);
 }
 
 SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 {
 
-    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C_IOMUX_SDA,
-        GPIO_I2C_IOMUX_SDA_FUNC, DL_GPIO_INVERSION_DISABLE,
-        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
-        DL_GPIO_WAKEUP_DISABLE);
-    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C_IOMUX_SCL,
-        GPIO_I2C_IOMUX_SCL_FUNC, DL_GPIO_INVERSION_DISABLE,
-        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
-        DL_GPIO_WAKEUP_DISABLE);
+    
+	DL_GPIO_initPeripheralInputFunction(
+		 GPIO_I2C_IOMUX_SDA, GPIO_I2C_IOMUX_SDA_FUNC);
+	DL_GPIO_initPeripheralInputFunction(
+		 GPIO_I2C_IOMUX_SCL, GPIO_I2C_IOMUX_SCL_FUNC);
     DL_GPIO_enableHiZ(GPIO_I2C_IOMUX_SDA);
     DL_GPIO_enableHiZ(GPIO_I2C_IOMUX_SCL);
 
@@ -106,6 +103,36 @@ SYSCONFIG_WEAK void SYSCFG_DL_SYSCTL_init(void)
 
 }
 
+
+static const DL_I2C_ClockConfig gI2CClockConfig = {
+    .clockSel = DL_I2C_CLOCK_BUSCLK,
+    .divideRatio = DL_I2C_CLOCK_DIVIDE_1,
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_I2C_init(void) {
+
+    DL_I2C_setClockConfig(I2C_INST,
+        (DL_I2C_ClockConfig *) &gI2CClockConfig);
+    DL_I2C_setAnalogGlitchFilterPulseWidth(I2C_INST,
+        DL_I2C_ANALOG_GLITCH_FILTER_WIDTH_50NS);
+    DL_I2C_enableAnalogGlitchFilter(I2C_INST);
+    DL_I2C_setDigitalGlitchFilterPulseWidth(I2C_INST,
+        DL_I2C_DIGITAL_GLITCH_FILTER_WIDTH_CLOCKS_1);
+
+    /* Configure Controller Mode */
+    DL_I2C_resetControllerTransfer(I2C_INST);
+    /* Set frequency to 100000 Hz*/
+    DL_I2C_setTimerPeriod(I2C_INST, 23);
+    DL_I2C_setControllerTXFIFOThreshold(I2C_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_1);
+    DL_I2C_setControllerRXFIFOThreshold(I2C_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
+    DL_I2C_enableControllerClockStretching(I2C_INST);
+
+
+    /* Enable module */
+    DL_I2C_enableController(I2C_INST);
+
+
+}
 
 
 /*
@@ -145,30 +172,4 @@ SYSCONFIG_WEAK void SYSCFG_DL_TIMER_0_init(void) {
 
 }
 
-
-static const DL_I2C_ClockConfig gI2CClockConfig = {
-    .clockSel = DL_I2C_CLOCK_BUSCLK,
-    .divideRatio = DL_I2C_CLOCK_DIVIDE_1,
-};
-
-SYSCONFIG_WEAK void SYSCFG_DL_I2C_init(void) {
-
-    DL_I2C_setClockConfig(I2C_INST,
-        (DL_I2C_ClockConfig *) &gI2CClockConfig);
-    DL_I2C_disableAnalogGlitchFilter(I2C_INST);
-
-    /* Configure Controller Mode */
-    DL_I2C_resetControllerTransfer(I2C_INST);
-    /* Set frequency to 100000 Hz*/
-    DL_I2C_setTimerPeriod(I2C_INST, 23);
-    DL_I2C_setControllerTXFIFOThreshold(I2C_INST, DL_I2C_TX_FIFO_LEVEL_BYTES_1);
-    DL_I2C_setControllerRXFIFOThreshold(I2C_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
-    DL_I2C_enableControllerClockStretching(I2C_INST);
-
-
-    /* Enable module */
-    DL_I2C_enableController(I2C_INST);
-
-
-}
 

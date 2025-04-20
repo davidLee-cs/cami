@@ -1,6 +1,8 @@
 
 #include "accelerometer.h"
- #include "ti/driverlib/m0p/dl_core.h"
+#include "ti/driverlib/m0p/dl_core.h"
+#include "ti_msp_dl_config.h"
+
 /******************************************************************************/
 /*!                Macro definition                                           */
 
@@ -158,19 +160,21 @@ void bma530_readAccel(void)
     if (status.acc_data_rdy)
     {
         /* Get accel data ready interrupt status */
-        rslt = bma530_get_int_status(&int_status, n_status, &dev);
+        // rslt = bma530_get_int_status(&int_status, n_status, &dev);
         // bma5_check_rslt("bma530_get_int_status", rslt);
 
         /* Check if the data is ready */
-        if (int_status.int_status.acc_drdy_int_status & BMA530_ACC_DRDY_INT_STATUS_MSK)
+        // if (int_status.int_status.acc_drdy_int_status & BMA530_ACC_DRDY_INT_STATUS_MSK)
         {
-            rslt = bma5_set_sensor_status(&status, &dev);
+            // rslt = bma5_set_sensor_status(&status, &dev);
             // bma5_check_rslt("bma5_set_sensor_status", rslt);
 
-            rslt = bma530_set_int_status(&int_status, n_status, &dev);
+            // rslt = bma530_set_int_status(&int_status, n_status, &dev);
             // bma5_check_rslt("bma530_set_int_status_int1_0", rslt);
 
             /* Get accel data and sensortime */
+            rslt = bma5_get_acc(&sens_data, &dev);
+
             rslt = bma5_get_acc(&sens_data, &dev);
             // bma5_check_rslt("bma5_get_acc", rslt);
 
