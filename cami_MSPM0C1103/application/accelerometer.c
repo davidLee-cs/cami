@@ -66,7 +66,7 @@ void bma530Accel_init(void)
     /* Assign context parameter selection */
     enum bma5_context context;
 
-    context = BMA5_SMARTPHONE;
+    context = BMA5_WEARABLE;
 
     int_config.int_src = BMA5_INT_1;
     int_status.int_src = BMA530_INT_STATUS_INT1;
@@ -99,9 +99,9 @@ void bma530Accel_init(void)
     // bma5_check_rslt("bma5_get_acc_conf", rslt);
 
     /* Set accel configurations */
-    acc_cfg.acc_odr = BMA5_ACC_ODR_HZ_25;
+    acc_cfg.acc_odr = BMA5_ACC_ODR_HZ_50;
     acc_cfg.acc_bwp = BMA5_ACC_BWP_NORM_AVG4;
-    acc_cfg.power_mode = BMA5_POWER_MODE_HPM;
+    acc_cfg.power_mode = BMA5_POWER_MODE_LPM;
 
     acc_cfg.acc_range = BMA5_ACC_RANGE_MAX_2G;
     acc_cfg.acc_iir_ro = BMA5_ACC_IIR_RO_DB_40;
@@ -173,8 +173,6 @@ void bma530_readAccel(void)
             // bma5_check_rslt("bma530_set_int_status_int1_0", rslt);
 
             /* Get accel data and sensortime */
-            rslt = bma5_get_acc(&sens_data, &dev);
-
             rslt = bma5_get_acc(&sens_data, &dev);
             // bma5_check_rslt("bma5_get_acc", rslt);
 

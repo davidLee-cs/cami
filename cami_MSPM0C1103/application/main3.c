@@ -145,12 +145,14 @@ int main(){
 
     gI2cControllerStatus = I2C_STATUS_IDLE;
 
+// 센서 설정 위치가 중요함. opt3007 먼저 설정 할것.
     ti_opt3007_registers devReg;
  	ti_opt3007_assignRegistermap(&devReg);
     ti_opt3007_setRn(&devReg);	
+    // 싱글샷은 에러 방생.
     ti_opt3007_setSensorContinuous(&devReg);
     ti_opt3007_setSensorConversionTime100mS(&devReg);
-   delay_cycles(24000000);
+    delay_cycles(24000000);
 
     bma530Accel_init();
     delay_cycles(24000000);
@@ -183,41 +185,31 @@ int main(){
         DL_SYSCTL_setPowerPolicyRUN0SLEEP0();  
         // DL_TimerG_startCounter(TIMER_1_INST);   
 
-        if(opt300checkCnt++ >= OPTTIME_10SEC)
-        {   
-            // gnr_pin = DL_GPIO_readPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-            // red_pin = DL_GPIO_readPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
 
-            DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
-            DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
+        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
+        DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
 
-            // ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
-            optlux = ti_opt3007_readLux();
+        // ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
+        optlux = ti_opt3007_readLux();
 
-            if(optlux < 10.0L) {
-                optDarkCnt++;
-            }
-            else {
-                optBrightCnt++;
-            }
-
-            if(opt300checkCnt >= OPTTIME_10SEC + 5)
-            {
-                if(optDarkCnt >= 3) {
-                    gLED_On = true;
-                }
-                else if (optBrightCnt >= 3){
-                    gLED_On = false;
-                }
-                    optBrightCnt = 0;
-                    optDarkCnt = 0;
-                    opt300checkCnt = 0;
-            }
-            else{
-                gLED_On = false;
-            }
+        if(optlux < 10.0L) {
+            optDarkCnt++;
         }
-        
+        else {
+            optBrightCnt++;
+        }
+
+        if(optDarkCnt >= 3) {
+            gLED_On = true;
+            optBrightCnt = 0;
+            optDarkCnt = 0;
+        }
+        else if (optBrightCnt >= 3){
+            gLED_On = false;
+            optBrightCnt = 0;
+            optDarkCnt = 0;
+        }
+
         bma530_readAccel();
         current_accel.x = cami_accel[0];
         current_accel.y = cami_accel[1];
@@ -240,6 +232,7 @@ int main(){
         }
 
         previous_filtered_accel = filtered_accel;
+
 
         if(gFish_Red == true){
 
