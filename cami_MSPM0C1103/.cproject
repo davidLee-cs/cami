@@ -93,7 +93,7 @@
                         </toolChain>
                     </folderInfo>
                     <sourceEntries>
-                        <entry excluding="application/main3.c|_cami_MSPM0C1103.syscfg|application/main copy 1.c|application/main copy.c|i2c_controller_rw_multibyte_fifo_interrupts.syscfg" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+                        <entry excluding="application/main_tmps.c|application/main3.c|_cami_MSPM0C1103.syscfg|application/main copy 1.c|application/main copy.c|i2c_controller_rw_multibyte_fifo_interrupts.syscfg" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
                     </sourceEntries>
                 </configuration>
             </storageModule>

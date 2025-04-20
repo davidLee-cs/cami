@@ -98,7 +98,12 @@ extern "C" {
 #define TIMER_0_INST                                                    (TIMG14)
 #define TIMER_0_INST_IRQHandler                                TIMG14_IRQHandler
 #define TIMER_0_INST_INT_IRQN                                  (TIMG14_INT_IRQn)
-#define TIMER_0_INST_LOAD_VALUE                                            (98U)
+#define TIMER_0_INST_LOAD_VALUE                                           (495U)
+/* Defines for TIMER_1 */
+#define TIMER_1_INST                                                     (TIMG8)
+#define TIMER_1_INST_IRQHandler                                 TIMG8_IRQHandler
+#define TIMER_1_INST_INT_IRQN                                   (TIMG8_INT_IRQn)
+#define TIMER_1_INST_LOAD_VALUE                                          (9374U)
 
 
 
@@ -124,6 +129,7 @@ void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_I2C_init(void);
 void SYSCFG_DL_TIMER_0_init(void);
+void SYSCFG_DL_TIMER_1_init(void);
 
 
 

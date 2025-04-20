@@ -19,11 +19,12 @@
 #include "accelerometer.h"
 // #include <cstdint>
 
-
+/* ((32KHz / (32+1)) * 0.5s) = 45 - 1 = 495 due to N+1 ticks */
+#define TIMER_500_MILLISECONDS_TICKS (495)
+/* ((32KHz / (32+1)) * 0.05s) = 50 */
+#define TIMER_50_MILLISECONDS_TICKS (50)
 
 #define PI 3.14159265
-
-
 #define OPTTIME_19MIN  (10*6*10)  // (100ms x 10 x 6 = 60초 x 10 
 #define OPTTIME_1MIN   (10*6)  // 100ms x 10 x 6 = 60sec 
 #define OPTTIME_10SEC  (10*10)  // (100ms x 10  = 1sec) * 10 = 10초
@@ -138,7 +139,8 @@ int main(){
     gTogglePolicy = false;
 
     NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
-    NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
+    DL_SYSCTL_enableSleepOnExit();
+    // NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
 
     NVIC_EnableIRQ(I2C_INST_INT_IRQN);
     DL_SYSCTL_disableSleepOnExit();
@@ -150,13 +152,13 @@ int main(){
     ti_opt3007_setRn(&devReg);	
     ti_opt3007_setSensorContinuous(&devReg);
     ti_opt3007_setSensorConversionTime100mS(&devReg);
-   delay_cycles(24000000);
+    delay_cycles(24000000);
 
     bma530Accel_init();
     delay_cycles(24000000);
 
     DL_TimerG_startCounter(TIMER_0_INST);
-    DL_TimerG_startCounter(TIMER_1_INST);
+    // DL_TimerG_startCounter(TIMER_1_INST);
     opt300checkCnt = OPTTIME_19MIN - 1;  // 첫번째 밝기 측정위해 설정
     gTogglePolicy = false;
 
@@ -165,121 +167,10 @@ int main(){
         accel_history[i] = (AccelerationData){0.0, 0.0, 0.0};
     }
 
-    while(1){
+    while (1) {
+        __WFI();
+    }
 
-        // while (false == gTogglePolicy) {
-        //     __WFE();
-        // }
-
-        gTogglePolicy = false;
-        DL_SYSCTL_setPowerPolicySTANDBY0();
-        DL_TimerG_stopCounter(TIMER_1_INST);
-
-        while (false == gTogglePolicy) {
-            __WFE();
-        }
-
-        DL_SYSCTL_setPowerPolicyRUN0SLEEP0();  
-        DL_TimerG_startCounter(TIMER_1_INST);   
-
-        if(opt300checkCnt++ >= OPTTIME_10SEC)
-        {   
-            // gnr_pin = DL_GPIO_readPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-            // red_pin = DL_GPIO_readPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-
-            DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
-            DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-
-            // ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
-            optlux = ti_opt3007_readLux();
-
-            if(optlux < 10.0L) {
-                optDarkCnt++;
-            }
-            else {
-                optBrightCnt++;
-            }
-
-            if(opt300checkCnt >= OPTTIME_10SEC + 5)
-            {
-                if(optDarkCnt >= 3) {
-                    gLED_On = true;
-                }
-                else if (optBrightCnt >= 3){
-                    gLED_On = false;
-                }
-                    optBrightCnt = 0;
-                    optDarkCnt = 0;
-                    opt300checkCnt = 0;
-            }
-            else{
-                gLED_On = false;
-            }
-        }
-        
-        if(gLED_On == true){
-
-            bma530_readAccel();
-            current_accel.x = cami_accel[0];
-            current_accel.y = cami_accel[1];
-            current_accel.z = cami_accel[2];
-            
-            // 필터 적용
-            AccelerationData filtered_accel = apply_filters(current_accel);
-
-            // Z축 가속도 변화량 계산 (필터링된 값 기준)
-            delta_z = fabs(filtered_accel.z - previous_filtered_accel.z);
-
-            if (delta_z > ACCELERATION_THRESHOLD_Z) {
-                significant_movement_count++;
-                if (significant_movement_count >= SIGNIFICANT_MOVEMENT_DURATION) {
-                    gFish_Red = true;
-                    significant_movement_count = 0;
-                }
-            } else {
-                significant_movement_count = 0;
-            }
-
-            previous_filtered_accel = filtered_accel;
-
-        }
-
-        if(gFish_Red == true){
-
-            if(fishcheckCnt++ >= 50){  // 100ms x 50 = 5sec
-                fishcheckCnt = 0;
-                gFish_Red = false;
-            }
-
-            if(gLED_On == true){
-                DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);     // RED ON
-                testcnt[0]++;
-            }
-            else {
-                DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);     // RED OFF
-                testcnt[1]++;
-            }
-            DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);       //GRN OFF
-            testcnt[3]++;
-        }
-        else {
-            if(gLED_On == true){
-                DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
-                testcnt[4]++;
-            }
-            else 
-            {
-                DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
-                testcnt[5]++;
-            }
-            DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-            testcnt[6]++;
-            
-        }
-        
-        gTogglePolicy = false;
-
-    };
 
 //	printf("Manufacturer ID:0x%02x DeviceID:0x%02x\n",ti_opt3007_readManufacturerID(&devReg),ti_opt3007_readDeviceID(&devReg));
 //	printf("OPT3007 Reading:%g lux\n",ti_opt3007_readLux());
@@ -308,38 +199,173 @@ int main(){
 /**
  * STANDBY0 Clock, runs all the time at the same frequency
  */
+// void TIMER_0_INST_IRQHandler(void)
+// {
+//     static uint32_t count = 5;
+//     switch (DL_TimerG_getPendingInterrupt(TIMER_0_INST)) {
+//         case DL_TIMERG_IIDX_ZERO:
+//             if (count == 1) {
+//                 gTogglePolicy = true;
+//                 count         = 1;
+//             } else {
+//                 count--;
+//             }
+//             break;
+//         default:
+//             break;
+//     }
+// }
 void TIMER_0_INST_IRQHandler(void)
 {
-    static uint32_t count = 5;
+    static uint32_t count = TIMER_500_MILLISECONDS_TICKS;
     switch (DL_TimerG_getPendingInterrupt(TIMER_0_INST)) {
-        case DL_TIMERG_IIDX_ZERO:
-            if (count == 1) {
-                gTogglePolicy = true;
-                count         = 1;
-            } else {
-                count--;
-            }
+        case DL_TIMER_IIDX_ZERO:
+            /*
+             * Counter stopped to avoid a conflict with the timer reading
+             * the LOAD value while it's being set
+             */
+                DL_TimerG_stopCounter(TIMER_0_INST);
+
+            /*
+             * Count progressively gets smaller in 0.05 s increments until
+             * reset with 0.5s
+             */
+                if (count > (TIMER_500_MILLISECONDS_TICKS / 5)) {
+                    count = count - TIMER_50_MILLISECONDS_TICKS;
+                } else {
+                    count = TIMER_500_MILLISECONDS_TICKS;
+                }
+
+                DL_Timer_setLoadValue(TIMER_0_INST, count);
+
+//*****************************************************************
+
+                if(opt300checkCnt++ >= OPTTIME_10SEC)
+                {   
+                    // gnr_pin = DL_GPIO_readPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                    // red_pin = DL_GPIO_readPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+
+                    DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
+                    DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
+
+                    // ti_opt3007_setSensorSingleShot(&devReg);        // 싱글샷 모드에서 주기적으로 설정한 후 밝기 측정 함.
+                    optlux = ti_opt3007_readLux();
+
+                    if(optlux < 10.0L) {
+                        optDarkCnt++;
+                    }
+                    else {
+                        optBrightCnt++;
+                    }
+
+                    if(opt300checkCnt >= OPTTIME_10SEC + 5)
+                    {
+                        if(optDarkCnt >= 3) {
+                            gLED_On = true;
+                        }
+                        else if (optBrightCnt >= 3){
+                            gLED_On = false;
+                        }
+                            optBrightCnt = 0;
+                            optDarkCnt = 0;
+                            opt300checkCnt = 0;
+                    }
+                    else{
+                        gLED_On = false;
+                    }
+                }
+                
+                if(gLED_On == true){
+
+                    bma530_readAccel();
+                    current_accel.x = cami_accel[0];
+                    current_accel.y = cami_accel[1];
+                    current_accel.z = cami_accel[2];
+                    
+                    // 필터 적용
+                    AccelerationData filtered_accel = apply_filters(current_accel);
+
+                    // Z축 가속도 변화량 계산 (필터링된 값 기준)
+                    delta_z = fabs(filtered_accel.z - previous_filtered_accel.z);
+
+                    if (delta_z > ACCELERATION_THRESHOLD_Z) {
+                        significant_movement_count++;
+                        if (significant_movement_count >= SIGNIFICANT_MOVEMENT_DURATION) {
+                            gFish_Red = true;
+                            significant_movement_count = 0;
+                        }
+                    } else {
+                        significant_movement_count = 0;
+                    }
+
+                    previous_filtered_accel = filtered_accel;
+
+                }
+
+                if(gFish_Red == true){
+
+                    if(fishcheckCnt++ >= 50){  // 100ms x 50 = 5sec
+                        fishcheckCnt = 0;
+                        gFish_Red = false;
+                    }
+
+                    if(gLED_On == true){
+                        DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);     // RED ON
+                        testcnt[0]++;
+                    }
+                    else {
+                        DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);     // RED OFF
+                        testcnt[1]++;
+                    }
+                    DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);       //GRN OFF
+                    testcnt[3]++;
+                }
+                else {
+                    if(gLED_On == true){
+                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
+                        testcnt[4]++;
+                    }
+                    else 
+                    {
+                        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
+                        testcnt[5]++;
+                    }
+                    DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
+                    testcnt[6]++;
+                    
+                }
+
+//***********************************************************************
+
+
+            /*
+             * By default, this should load the new count value and count down
+             * from there (CVAE = 0)
+             */
+                DL_TimerG_startCounter(TIMER_0_INST);
+
             break;
         default:
             break;
     }
 }
 
+
 /**
  * SLEEP0 Clock, toggles LED in RUN0SLEEP0, does not toggles the LED
  * when running in STANDBY0
  */
-void TIMER_1_INST_IRQHandler(void)
-{
-    switch (DL_TimerG_getPendingInterrupt(TIMER_1_INST)) {
-        case DL_TIMERG_IIDX_ZERO:
-            // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+// void TIMER_1_INST_IRQHandler(void)
+// {
+//     switch (DL_TimerG_getPendingInterrupt(TIMER_1_INST)) {
+//         case DL_TIMERG_IIDX_ZERO:
+//             // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
             
-            break;
-        default:
-            break;
-    }
-}
+//             break;
+//         default:
+//             break;
+//     }
+// }
 
 /* Interrupt handler for I2C */
 void I2C_INST_IRQHandler(void) {
