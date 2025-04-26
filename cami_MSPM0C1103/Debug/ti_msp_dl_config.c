@@ -80,15 +80,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
     DL_GPIO_enableHiZ(GPIO_I2C_IOMUX_SDA);
     DL_GPIO_enableHiZ(GPIO_I2C_IOMUX_SCL);
 
-    DL_GPIO_initDigitalOutput(LED_RED_PIN_0_IOMUX);
-
-    DL_GPIO_initDigitalOutput(LED_GREEN_PIN_1_IOMUX);
-
-    DL_GPIO_clearPins(GPIOA, LED_RED_PIN_0_PIN |
-		LED_GREEN_PIN_1_PIN);
-    DL_GPIO_enableOutput(GPIOA, LED_RED_PIN_0_PIN |
-		LED_GREEN_PIN_1_PIN);
-
 }
 
 

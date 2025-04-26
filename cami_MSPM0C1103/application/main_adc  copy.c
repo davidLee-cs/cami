@@ -27,6 +27,19 @@
 #define ADC12_0_ADCMEM_0_REF                   DL_ADC12_REFERENCE_VOLTAGE_INTREF
 #define ADC12_0_ADCMEM_0_REF_VOLTAGE_V                                      2.50
 
+/* Port definition for Pin Group LED_RED */
+#define LED_RED_PORT                                                     (GPIOA)
+
+/* Defines for PIN_0: GPIOA.27 with pinCMx 28 on package pin 1 */
+#define LED_RED_PIN_0_PIN                                       (DL_GPIO_PIN_27)
+#define LED_RED_PIN_0_IOMUX                                      (IOMUX_PINCM28)
+/* Port definition for Pin Group LED_GREEN */
+#define LED_GREEN_PORT                                                   (GPIOA)
+
+/* Defines for PIN_1: GPIOA.24 with pinCMx 25 on package pin 8 */
+#define LED_GREEN_PIN_1_PIN                                     (DL_GPIO_PIN_24)
+#define LED_GREEN_PIN_1_IOMUX                                    (IOMUX_PINCM25)
+
 
 #define PI 3.14159265
 
@@ -41,7 +54,7 @@
 /* clang-format off */
 #define ADC12_BIT_RESOLUTION                (10)
 #define ADC12_REF_VOLTAGE                   (2.5)
-#define ADC12_SUPPLY_MONITOR_VOLTAGE        (2.5)
+#define ADC12_SUPPLY_MONITOR_VOLTAGE        (2.6)
  #define ADC12_SUPPLY_MONITOR_VALUE         ( (1 << ADC12_BIT_RESOLUTION) * \
                                               (ADC12_SUPPLY_MONITOR_VOLTAGE / \
                                                (3 * ADC12_REF_VOLTAGE)))
@@ -53,6 +66,9 @@ volatile int16_t gADCOffset;
 
 //uint32_t gRxLen, gRxCount;
 void I2C_INST_IRQHandler(void);
+void adcSet(void);
+void batteryCheck(void);
+void ledGpioSet(void);
 
 /* Data sent to the Target */
 uint8_t gTxPacket[I2C_TX_MAX_PACKET_SIZE] = {0x00,};
@@ -74,11 +90,13 @@ uint16_t opt300checkCnt;
 uint16_t optBrightCnt;
 uint16_t optDarkCnt;
 uint16_t fishcheckCnt;
+uint16_t lowVoltCnt;
 uint16_t fishEndCnt;
 volatile bool gTogglePolicy;
 static bool gFish_Red;
 static bool gLED_On;
-static bool gAllLedOn = false;
+static bool gAllLedOff = false;
+static bool gLowVoltage = false;
 
 uint16_t testcnt[10];
 
@@ -111,8 +129,8 @@ double delta_z = 0.0;
 
 uint32_t gnr_pin;
 uint32_t red_pin;
-
 uint16_t adcResult;
+
 
 // 필터링된 가속도 값 계산
 AccelerationData apply_filters(AccelerationData current) {
@@ -150,17 +168,9 @@ int main(){
     uint16_t led=5;
 
     SYSCFG_DL_init();
+    ledGpioSet();
 
-    /* Set LED to indicate start of transfer */
-    
-    DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-    // while(led--)
-    // {
-    //     DL_GPIO_togglePins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-    //     DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-    //     // DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-    //     delay_cycles(DELAY);
-    // }
+    /* Set LED to indicate start of transfer */    
     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
     DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
     delay_cycles(24000000);
@@ -196,12 +206,6 @@ int main(){
     for (int i = 0; i < MOVING_AVERAGE_WINDOW_SIZE; i++) {
         accel_history[i] = (AccelerationData){0.0, 0.0, 0.0};
     }
-
-    /* Get calibrated ADC offset - workaround for ADC_ERR_06 */
-    gADCOffset = DL_ADC12_getADCOffsetCalibration(ADC12_REF_VOLTAGE);
-
-    // NVIC_EnableIRQ(ADC12_0_INST_INT_IRQN);
-    gCheckADC = false;
 
     while(1){
 
@@ -244,17 +248,32 @@ int main(){
                 else if (optBrightCnt >= 3){
                     gLED_On = false;
                 }
-                    optBrightCnt = 0;
-                    optDarkCnt = 0;
-                    opt300checkCnt = 0;
+
+                optBrightCnt = 0;
+                optDarkCnt = 0;
+                opt300checkCnt = 0;
+
+                adcSet();
+                DL_ADC12_setPowerDownMode(ADC12_0_INST,DL_ADC12_POWER_DOWN_MODE_AUTO);
+                /* Get calibrated ADC offset - workaround for ADC_ERR_06 */
+                gADCOffset = DL_ADC12_getADCOffsetCalibration(ADC12_REF_VOLTAGE);
+                NVIC_EnableIRQ(ADC12_0_INST_INT_IRQN);
+                DL_ADC12_startConversion(ADC12_0_INST);
+                gCheckADC = false;
+                batteryCheck();    
+                DL_ADC12_stopConversion(ADC12_0_INST)  ;      
+                DL_ADC12_disablePower(ADC12_0_INST);
+                DL_VREF_disablePower(VREF);  
+                delay_cycles(2400);
+                ledGpioSet();
+
             }
             else{
                 gLED_On = false;
             }
-
         }
 
-        gLED_On = true;
+        // gLED_On = true;
         if(gLED_On == true){
 
             bma530_readAccel();
@@ -266,12 +285,12 @@ int main(){
             {
                 if(fishEndCnt++ > OPTTIME_30SEC)
                 {
-                    gAllLedOn = true;
+                    gAllLedOff = true;
                 }
             }
             else {
 
-                gAllLedOn = false;
+                gAllLedOff = false;
             }
 
             // 필터 적용
@@ -294,7 +313,7 @@ int main(){
 
         }
 
-        if(gAllLedOn == false)
+        if(gAllLedOff == false)
         {
             if(gFish_Red == true){
 
@@ -316,8 +335,17 @@ int main(){
             }
             else {
                 if(gLED_On == true){
-                    DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
-                    testcnt[4]++;
+                    if(gLowVoltage == true)
+                    {
+                        if(lowVoltCnt++ > 15){
+                            lowVoltCnt = 0;
+                            DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
+                        }
+                    }
+                    else {
+                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
+                    
+                    }
                 }
                 else 
                 {
@@ -325,8 +353,7 @@ int main(){
                     testcnt[5]++;
                 }
                 DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-                testcnt[6]++;
-                
+
             }
         }
         else {
@@ -338,31 +365,11 @@ int main(){
 
     };
 
-//	printf("Manufacturer ID:0x%02x DeviceID:0x%02x\n",ti_opt3007_readManufacturerID(&devReg),ti_opt3007_readDeviceID(&devReg));
-//	printf("OPT3007 Reading:%g lux\n",ti_opt3007_readLux());
-	/* Available functions to set the device
-        void ti_opt3007_setSensorShutDown(ti_opt3007_registers* devReg);
-        void ti_opt3007_setSensorSingleShot(ti_opt3007_registers* devReg);
-        void ti_opt3007_setSensorContinuous(ti_opt3007_registers* devReg);
-        void ti_opt3007_setSensorConversionTime100mS(ti_opt3007_registers* devReg);
-        void ti_opt3007_setSensorConversionTime800mS(ti_opt3007_registers* devReg);
-        double ti_opt3007_readLux(void);
-        uint16_t ti_opt3007_readManufacturerID(ti_opt3007_registers* devReg);
-        uint16_t ti_opt3007_readDeviceID(ti_opt3007_registers* devReg);
-
-	For direct register writes to registers in the data sheet... for eg:
-	If its desired to write register TH is 0x10.. here is the example...
-        ti_opt3007_deviceRegister_write(&devReg->TH,0x10);
-	if desired to read a register from data sheet for example TH
-        readValue=ti_opt3007_deviceRegister_read(&devReg->TH);
-
-*/
-
 	return 0;
 }
 
 
-#if 0
+#if 1
 void batteryCheck(void)
 {
 
@@ -389,10 +396,10 @@ void batteryCheck(void)
     gAdcResultVolts =
         (adcResult * ADC12_REF_VOLTAGE) / (1 << ADC12_BIT_RESOLUTION) * 3;
 
-    if (adcResult > ADC12_SUPPLY_MONITOR_VALUE) {
-        DL_GPIO_clearPins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
+    if (gAdcResultVolts > ADC12_SUPPLY_MONITOR_VOLTAGE) {
+        gLowVoltage = false;
     } else {
-        DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
+        gLowVoltage = true;
     }
 
 }
@@ -403,35 +410,11 @@ void ADC12_0_INST_IRQHandler(void)
     switch (DL_ADC12_getPendingInterrupt(ADC12_0_INST)) {
         case DL_ADC12_IIDX_MEM0_RESULT_LOADED:
             gCheckADC = true;
-
-            /* Result in integer for efficient processing */
-            adcResult = DL_ADC12_getMemResult(ADC12_0_INST, DL_ADC12_MEM_IDX_0);
-
-            /* Apply calibrated ADC offset - workaround for ADC_ERR_06 */
-            int16_t adcRaw = (int16_t) adcResult + gADCOffset;
-            if (adcRaw < 0) {
-                adcRaw = 0;
-            }
-            if (adcRaw > 4095) {
-                adcRaw = 4095;
-            }
-            adcResult = (uint16_t) adcRaw;
-
-            /* Result in float for simpler reading */
-            // gAdcResultVolts = (adcResult * ADC12_REF_VOLTAGE) / (1 << ADC12_BIT_RESOLUTION) * 3;
-
-            if (adcResult > ADC12_SUPPLY_MONITOR_VALUE) {
-                // DL_GPIO_clearPins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
-            } else {
-                // DL_GPIO_setPins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN);
-            }
-
-
             break;
         default:
             break;
     }
-}
+} 
 
 
 /**
@@ -518,20 +501,19 @@ void I2C_INST_IRQHandler(void) {
 }
 
 
-// void ledGpioSet(void)
-// {
-//     DL_GPIO_reset(GPIOA);
-//     DL_GPIO_enablePower(GPIOA);
-//     delay_cycles(POWER_STARTUP_DELAY);
+void ledGpioSet(void)
+{
+    // DL_GPIO_reset(GPIOA);
+    // DL_GPIO_enablePower(GPIOA);
+    // delay_cycles(POWER_STARTUP_DELAY);
 
-//     DL_GPIO_initDigitalOutput(GPIO_LEDS_USER_LED_1_IOMUX);
-//     DL_GPIO_initDigitalOutput(GPIO_LEDS_USER_TEST_IOMUX);
-//     DL_GPIO_clearPins(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN |
-// 		GPIO_LEDS_USER_TEST_PIN);
-//     DL_GPIO_enableOutput(GPIO_LEDS_PORT, GPIO_LEDS_USER_LED_1_PIN |
-// 		GPIO_LEDS_USER_TEST_PIN);
-
-// }
+    DL_GPIO_initDigitalOutput(LED_RED_PIN_0_IOMUX);
+    DL_GPIO_initDigitalOutput(LED_GREEN_PIN_1_IOMUX);
+    DL_GPIO_clearPins(GPIOA, LED_RED_PIN_0_PIN |
+		LED_GREEN_PIN_1_PIN);
+    DL_GPIO_enableOutput(GPIOA, LED_RED_PIN_0_PIN |
+		LED_GREEN_PIN_1_PIN);
+}
 
 /* ADC12_0 Initialization */
 static const DL_ADC12_ClockConfig gADC12_0ClockConfig = {
@@ -540,26 +522,13 @@ static const DL_ADC12_ClockConfig gADC12_0ClockConfig = {
     .freqRange      = DL_ADC12_CLOCK_FREQ_RANGE_20_TO_24,
 };
 
-static const DL_VREF_ClockConfig gVREFClockConfig = {
-    .clockSel = DL_VREF_CLOCK_BUSCLK,
-    .divideRatio = DL_VREF_CLOCK_DIVIDE_1,
-};
-
-static const DL_VREF_Config gVREFConfig = {
-    .vrefEnable     = DL_VREF_ENABLE_ENABLE,
-    .bufConfig      = DL_VREF_BUFCONFIG_OUTPUT_2_5V,
-    .shModeEnable   = DL_VREF_SHMODE_DISABLE,
-    .holdCycleCount = DL_VREF_HOLD_MIN,
-    .shCycleCount   = DL_VREF_SH_MIN,
-};
-
 void adcSet(void)
 {
-    DL_GPIO_reset(GPIOA);
+    // DL_GPIO_reset(GPIOA);
     DL_ADC12_reset(ADC12_0_INST);
     DL_VREF_reset(VREF);
 
-    DL_GPIO_enablePower(GPIOA);
+    // DL_GPIO_enablePower(GPIOA);
     DL_ADC12_enablePower(ADC12_0_INST);
     DL_VREF_enablePower(VREF);
     delay_cycles(POWER_STARTUP_DELAY);
@@ -572,14 +541,30 @@ void adcSet(void)
         DL_ADC12_INPUT_CHAN_15, DL_ADC12_REFERENCE_VOLTAGE_INTREF, DL_ADC12_SAMPLE_TIMER_SOURCE_SCOMP0, DL_ADC12_AVERAGING_MODE_DISABLED,
         DL_ADC12_BURN_OUT_SOURCE_DISABLED, DL_ADC12_TRIGGER_MODE_AUTO_NEXT, DL_ADC12_WINDOWS_COMP_MODE_DISABLED);
     DL_ADC12_setSampleTime0(ADC12_0_INST,375);
+
+
+
     /* Enable ADC12 interrupt */
     DL_ADC12_clearInterruptStatus(ADC12_0_INST,(DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED));
     DL_ADC12_enableInterrupt(ADC12_0_INST,(DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED));
     DL_ADC12_enableConversions(ADC12_0_INST);
+}
 
+static const DL_VREF_ClockConfig gVREFClockConfig = {
+    .clockSel = DL_VREF_CLOCK_BUSCLK,
+    .divideRatio = DL_VREF_CLOCK_DIVIDE_1,
+};
+static const DL_VREF_Config gVREFConfig = {
+    .vrefEnable     = DL_VREF_ENABLE_ENABLE,
+    .bufConfig      = DL_VREF_BUFCONFIG_OUTPUT_2_5V,
+    .shModeEnable   = DL_VREF_SHMODE_DISABLE,
+    .holdCycleCount = DL_VREF_HOLD_MIN,
+    .shCycleCount   = DL_VREF_SH_MIN,
+};
+
+SYSCONFIG_WEAK void SYSCFG_DL_VREF_init(void) {
     DL_VREF_setClockConfig(VREF,
         (DL_VREF_ClockConfig *) &gVREFClockConfig);
     DL_VREF_configReference(VREF,
         (DL_VREF_Config *) &gVREFConfig);
-
 }

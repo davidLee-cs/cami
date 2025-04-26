@@ -107,20 +107,6 @@ extern "C" {
 
 
 
-
-/* Port definition for Pin Group LED_RED */
-#define LED_RED_PORT                                                     (GPIOA)
-
-/* Defines for PIN_0: GPIOA.27 with pinCMx 28 on package pin 1 */
-#define LED_RED_PIN_0_PIN                                       (DL_GPIO_PIN_27)
-#define LED_RED_PIN_0_IOMUX                                      (IOMUX_PINCM28)
-/* Port definition for Pin Group LED_GREEN */
-#define LED_GREEN_PORT                                                   (GPIOA)
-
-/* Defines for PIN_1: GPIOA.24 with pinCMx 25 on package pin 8 */
-#define LED_GREEN_PIN_1_PIN                                     (DL_GPIO_PIN_24)
-#define LED_GREEN_PIN_1_IOMUX                                    (IOMUX_PINCM25)
-
 /* clang-format on */
 
 void SYSCFG_DL_init(void);
@@ -130,7 +116,6 @@ void SYSCFG_DL_SYSCTL_init(void);
 void SYSCFG_DL_I2C_init(void);
 void SYSCFG_DL_TIMER_0_init(void);
 void SYSCFG_DL_TIMER_1_init(void);
-
 
 
 #ifdef __cplusplus
