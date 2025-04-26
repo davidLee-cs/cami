@@ -71,7 +71,7 @@ TIMER1.timerClkSrc        = "LFCLK";
 TIMER1.timerClkPrescale   = 33;
 TIMER1.timerMode          = "PERIODIC";
 TIMER1.interrupts         = ["ZERO"];
-TIMER1.timerPeriod        = "500ms";
+TIMER1.timerPeriod        = "100ms";
 TIMER1.peripheral.$assign = "TIMG14";
 
 TIMER2.$name              = "TIMER_1";

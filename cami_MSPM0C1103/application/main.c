@@ -76,7 +76,7 @@ AccelerationData accel_history[MOVING_AVERAGE_WINDOW_SIZE];
 int16_t history_index = 0;
 
 // 입질 감지를 위한 임계값 (Z축, 조정 필요)
-#define ACCELERATION_THRESHOLD_Z      0.2//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_Z      0.007//1.0 // Z축 변화량 임계값 (조정 필요)
 #define SIGNIFICANT_MOVEMENT_DURATION 3 // 연속된 움직임 감지 횟수 (조정 필요)
 
 // 고역 통과 필터 파라미터 (간단한 차분 형태)
@@ -138,7 +138,7 @@ int main(){
     gTogglePolicy = false;
 
     NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
-    NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
+    // NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
 
     NVIC_EnableIRQ(I2C_INST_INT_IRQN);
     DL_SYSCTL_disableSleepOnExit();
@@ -150,13 +150,13 @@ int main(){
     ti_opt3007_setRn(&devReg);	
     ti_opt3007_setSensorContinuous(&devReg);
     ti_opt3007_setSensorConversionTime100mS(&devReg);
-   delay_cycles(24000000);
+    delay_cycles(24000000);
 
     bma530Accel_init();
     delay_cycles(24000000);
 
     DL_TimerG_startCounter(TIMER_0_INST);
-    DL_TimerG_startCounter(TIMER_1_INST);
+    // DL_TimerG_startCounter(TIMER_1_INST);
     opt300checkCnt = OPTTIME_19MIN - 1;  // 첫번째 밝기 측정위해 설정
     gTogglePolicy = false;
 
@@ -167,20 +167,18 @@ int main(){
 
     while(1){
 
-        // while (false == gTogglePolicy) {
-        //     __WFE();
-        // }
-
         gTogglePolicy = false;
+        DL_I2C_disablePower(I2C_INST);
         DL_SYSCTL_setPowerPolicySTANDBY0();
-        DL_TimerG_stopCounter(TIMER_1_INST);
+        // DL_TimerG_stopCounter(TIMER_1_INST);
 
         while (false == gTogglePolicy) {
             __WFE();
         }
 
         DL_SYSCTL_setPowerPolicyRUN0SLEEP0();  
-        DL_TimerG_startCounter(TIMER_1_INST);   
+        DL_I2C_enablePower(I2C_INST);
+        // DL_TimerG_startCounter(TIMER_1_INST);   
 
         if(opt300checkCnt++ >= OPTTIME_10SEC)
         {   
