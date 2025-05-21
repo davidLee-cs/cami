@@ -66,7 +66,7 @@ void batteryCheck(void);
 #define MODE_CHECK      1
 #define NORMAL_CHEMI    2
 #define SMART_CHEMI     3
-
+#define SENSITIVE_MODE  4
 
 #define PI 3.14159265
 #define OPTTIME_19MIN  (10*6*10)  // (100ms x 10 x 6 = 60초 x 10 
@@ -75,6 +75,9 @@ void batteryCheck(void);
 #define OPTTIME_30SEC  (10*10*3)  // (100ms x 10  = 1sec) * 10 * 3 = 30초
 
 #define DELAY (24000000/1000000)
+
+#define LOW_DELTA_THRESHOLD       (5.0L)     // 실험치 측정 필요
+#define NIGHT_THRESHOLD           (10.0L)    // 밤 실험치 측정 필요
 
 
 //uint32_t gRxLen, gRxCount;
@@ -111,6 +114,8 @@ static bool gFish_Red;
 static bool gLED_On;
 static bool gAllLedOff = false;
 static bool gLowVoltage = false;
+bool bUpstate = false;
+bool bDownstate = true;
 uint16_t upCnt_zAxis = 0;
 uint16_t downCnt_zAxis = 0;
 uint16_t modeCheckCnt = 0;
@@ -133,8 +138,9 @@ AccelerationData accel_history[MOVING_AVERAGE_WINDOW_SIZE];
 int16_t history_index = 0;
 
 // 입질 감지를 위한 임계값 (Z축, 조정 필요)
-#define ACCELERATION_THRESHOLD_Z      0.007//1.0 // Z축 변화량 임계값 (조정 필요)
-#define SIGNIFICANT_MOVEMENT_DURATION 3 // 연속된 움직임 감지 횟수 (조정 필요)
+#define ACCELERATION_THRESHOLD_0_Z      0.01//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_1_Z      0.007//1.0 // Z축 변화량 임계값 (조정 필요)
+#define SIGNIFICANT_MOVEMENT_DURATION   3 // 연속된 움직임 감지 횟수 (조정 필요)
 
 // 고역 통과 필터 파라미터 (간단한 차분 형태)
 #define HIGH_PASS_FILTER_FACTOR 0.8 // 0에 가까울수록 저주파 성분 제거 강도 증가
@@ -143,6 +149,8 @@ AccelerationData current_accel;
 AccelerationData previous_filtered_accel = {0.0, 0.0, 0.0};
 int16_t significant_movement_count = 0;
 double delta_z = 0.0;
+double threshold_level_z = 0.0;
+
 
 uint32_t gnr_pin;
 uint32_t red_pin;
@@ -210,7 +218,7 @@ int main(){
     ti_opt3007_setRn(&devReg);	
     ti_opt3007_setSensorContinuous(&devReg);
     ti_opt3007_setSensorConversionTime100mS(&devReg);
-    delay_cycles(24000000);
+    delay_cycles(24000);
 
     bma530Accel_init();
     delay_cycles(24000);
@@ -251,36 +259,67 @@ int main(){
                 current_accel.y = cami_accel[1];
                 current_accel.z = cami_accel[2];
 
-                if(current_accel.z > 2.0)
+                // down
+                if((current_accel.z > 1.8) && (bDownstate == false))
                 {
-                    upCnt_zAxis++;
-                }
-
-                if(current_accel.z < -2.0)
-                {
+                    DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+                    DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
                     downCnt_zAxis++;
+                    bUpstate = false;
+                    bDownstate = true;
                 }
 
-                if(modeCheckCnt++ > 50)     // 5초
+                // Up
+                if((current_accel.z < -1.25) &&  (bUpstate == false))
                 {
-                    if((upCnt_zAxis > 5) && (downCnt_zAxis > 5))
+                    DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+                    DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                    upCnt_zAxis++;
+                    bUpstate = true;
+                    bDownstate = false;
+                }
+
+                if(modeCheckCnt++ > 40)     // 4초
+                {
+                    __BKPT(0);
+
+                    if(downCnt_zAxis == 2)
                     {
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
-                        for(cnt=0; cnt<5; cnt++)
+                        for(cnt=0; cnt<6; cnt++)
                         {
-                            DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                            // DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                            DL_GPIO_togglePins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                             delay_cycles(12000000);
                         }
 
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+
+                        threshold_level_z = ACCELERATION_THRESHOLD_1_Z;     // 민감
+
+                        modeSel = SMART_CHEMI;
+                    }
+                    else if(downCnt_zAxis >= 3)
+                    {
+                        DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+                        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+
+                        for(cnt=0; cnt<6; cnt++)
+                        {
+                            DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                            // DL_GPIO_togglePins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+                            delay_cycles(12000000);
+                        }
+
+                        DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // 일반모드 상시 켜짐
 
                         modeSel = NORMAL_CHEMI;
                     }
-                    else
-                    {
+                    else {
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                         DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
@@ -292,7 +331,9 @@ int main(){
                         }
 
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+                        DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+
+                        threshold_level_z = ACCELERATION_THRESHOLD_0_Z;     // 보통
 
                         modeSel = SMART_CHEMI;
                     }
@@ -302,7 +343,6 @@ int main(){
                 }
 
                 break;
-
             case NORMAL_CHEMI : 
                     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
@@ -314,15 +354,21 @@ int main(){
 
                 if(opt300checkCnt++ >= OPTTIME_10SEC)
                 {   
-                    ledOn_lux = ti_opt3007_readLux();
+                    ledOn_lux = ti_opt3007_readLux();       // led + 주변환경 밝기 
 
                     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
                     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
 
-                    ledOff_lux = ti_opt3007_readLux();
-                    optlux = ledOn_lux - ledOff_lux;
+                    ledOff_lux = ti_opt3007_readLux();      // 주변밝기
+                    optlux = (ledOn_lux > ledOff_lux) ? (ledOn_lux - ledOff_lux) : 100.0;
 
-                    if(ledOff_lux < 10.0L) {
+                    if(optlux < LOW_DELTA_THRESHOLD)
+                    {
+                        // 한번 설정되면 배터리 제거 전까지 변경 안됨
+                        gLowVoltage = true;
+                    }
+
+                    if(ledOff_lux < NIGHT_THRESHOLD) {
                         optDarkCnt++;
                     }
                     else {
@@ -355,7 +401,7 @@ int main(){
                     current_accel.y = cami_accel[1];
                     current_accel.z = cami_accel[2];
                     
-                    if(current_accel.z > -1.0)
+                    if(current_accel.z > -0.7)
                     {
                         if(fishEndCnt++ > OPTTIME_30SEC)
                         {
@@ -373,7 +419,7 @@ int main(){
                     // Z축 가속도 변화량 계산 (필터링된 값 기준)
                     delta_z = fabs(filtered_accel.z - previous_filtered_accel.z);
 
-                    if (delta_z > ACCELERATION_THRESHOLD_Z) {
+                    if (delta_z > threshold_level_z) {
                         significant_movement_count++;
                         if (significant_movement_count >= SIGNIFICANT_MOVEMENT_DURATION) {
                             gFish_Red = true;
@@ -387,11 +433,10 @@ int main(){
 
                 }
 
-                if(gAllLedOff == false)
-                {
+                if(gAllLedOff == false){
                     if(gFish_Red == true){
 
-                        if(fishcheckCnt++ >= 30){  // 100ms x 50 = 5sec
+                        if(fishcheckCnt++ >= 18){  // 100ms x 50 = 5sec
                             fishcheckCnt = 0;
                             gFish_Red = false;
                         }
@@ -411,7 +456,7 @@ int main(){
                         if(gLED_On == true){
                             if(gLowVoltage == true)
                             {
-                                if(lowVoltCnt++ > 15){
+                                if(lowVoltCnt++ > 15){      // 1.5초 주기
                                     lowVoltCnt = 0;
                                     DL_GPIO_togglePins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
                                 }
