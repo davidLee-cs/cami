@@ -8,6 +8,10 @@
      - MSPM0L1104 로 교체
      - 메모리 부족
 
+    2025.05.25
+    - 자동 보정 기능
+    - 필터 기능 개선
+
  */
 
  #include "ti/driverlib/m0p/dl_core.h"
@@ -79,6 +83,28 @@ void batteryCheck(void);
 #define LOW_DELTA_THRESHOLD       (5.0L)     // 실험치 측정 필요
 #define NIGHT_THRESHOLD           (10.0L)    // 밤 실험치 측정 필요
 
+// --- 필터링 파라미터 ---
+#define EWMA_ALPHA                0.3f    // EWMA 계수 (0<α<1)
+#define HPF_FACTOR                0.9f    // 1차 IIR 고역통과 필터 계수
+
+// --- 적응 임계치 초기화 파라미터 ---
+#define CALIBRATION_DURATION_MS   12    // 캘리브레이션 기간 , 5초 x 12 = 60 초
+#define CALIBRATION_INTERVAL_MS   100     // 캘리 측정 간격 (ms)
+#define THRESHOLD_STD_FACTOR      3.0f    // (평균 + k*표준편차)
+
+// --- 이벤트 지속시간 및 딜레이 ---
+#define DETECTION_LOCKOUT_MS      500     // 한번 감지 후 재감지 금지 시간 (ms)
+
+
+// 재캘리브레이션 주기 (예: 1분마다)
+#define RECALIBRATION_INTERVAL_MS   60000  
+// 재캘리 샘플링 기간 (예: 2초)
+#define RECALIBRATION_DURATION_MS   6  // 30초    
+#define RECALIBRATION_SAMPLE_MS     50     
+
+static uint32_t last_recal_time = 0;
+static int recalib_sample_cnt = 0;
+static float recalib_accum[RECALIBRATION_DURATION_MS / RECALIBRATION_SAMPLE_MS];
 
 //uint32_t gRxLen, gRxCount;
 void I2C_INST_IRQHandler(void);
@@ -95,7 +121,7 @@ uint8_t gRxPacket[I2C_RX_MAX_PACKET_SIZE];
 /* Counters for TX length and bytes sent */
 uint32_t gRxLen, gRxCount;
 
-ti_opt3007_registers devReg;
+//ti_opt3007_registers devReg;
 
 bool bflag;
 uint16_t optid;
@@ -112,15 +138,21 @@ uint16_t fishEndCnt;
 volatile bool gTogglePolicy;
 static bool gFish_Red;
 static bool gLED_On;
+static bool gNowNight;
 static bool gAllLedOff = false;
 static bool gLowVoltage = false;
 bool bUpstate = false;
 bool bDownstate = true;
+bool bfirstCal = true;
 uint16_t upCnt_zAxis = 0;
 uint16_t downCnt_zAxis = 0;
 uint16_t modeCheckCnt = 0;
 
 uint16_t testcnt[10];
+uint32_t gCnt_100ms;
+uint32_t gVerticalCnt_100ms;
+uint16_t gCnt_firstCalibration;
+uint16_t gCnt_ReCalibration;
 
         // 샘플 수집
 uint16_t samCnt=0;    
@@ -149,13 +181,70 @@ AccelerationData current_accel;
 AccelerationData previous_filtered_accel = {0.0, 0.0, 0.0};
 int16_t significant_movement_count = 0;
 double delta_z = 0.0;
-double threshold_level_z = 0.0;
-
+float threshold_level_z = 0.0;
+float previous_accel_z = 0.0;
 
 uint32_t gnr_pin;
 uint32_t red_pin;
 uint16_t adcResult;
 int16_t  modeSel;
+uint16_t bSensitivityLevel = 1;
+
+// 캘리브레이션 변수
+static float ewma_z = 0.0f;
+static float hpf_z_prev = 0.0f;
+static float calib_samples[CALIBRATION_DURATION_MS / CALIBRATION_INTERVAL_MS];
+static int   calib_cnt = 0;
+static float thresh_mean = 0.0f, thresh_std = 0.0f;
+static uint32_t last_detect_time = 0;
+
+
+
+
+// 추가 설정
+#define VERTICAL_STABLE_DURATION_MS  50    // 2초  수직 상태가 연속 유지돼야 하는 시간
+#define INITIAL_CALIB_DELAY_MS       600   //60초 수직 후 대기할 시간 (1분)
+
+// 상태 정의
+typedef enum {
+    STATE_WAIT_VERTICAL,
+    STATE_DELAY_BEFORE_CALIB,
+    STATE_OPERATING
+} SystemState;
+
+// 전역 변수
+static SystemState sys_state = STATE_WAIT_VERTICAL;
+static uint32_t vertical_detect_time = 0;
+
+// 수직 상태 판정 함수
+bool is_vertical_stable(void) {
+    static uint32_t start = 0;
+    static bool timing = false;
+    
+    
+    // Z축이 중력가속도 ≈1g, X/Y축은 거의 0g 근처인지 확인
+    const double G = 1.8f;
+    const double TOL = 0.5f;
+    bool vertical = (fabs(current_accel.x - G) < TOL) &&
+                    (fabs(current_accel.y) < TOL) &&
+                    (fabs(current_accel.z) < TOL);
+
+    if (vertical) {
+        if (!timing) {
+            timing = true;
+            gVerticalCnt_100ms = 0;
+        } else if (gVerticalCnt_100ms >= VERTICAL_STABLE_DURATION_MS) {
+            // 충분히 수직 상태가 유지됨
+            timing = false;
+            gCnt_firstCalibration = 0;
+            return true;
+        }
+    } else {
+        // 수직 판정 실패 시 타이머 리셋
+        timing = false;
+    }
+    return false;
+}
 
 // 필터링된 가속도 값 계산
 AccelerationData apply_filters(AccelerationData current) {
@@ -186,6 +275,81 @@ AccelerationData apply_filters(AccelerationData current) {
     return high_passed;
 }
 
+void calibrate_threshold(float z_axis) {
+
+    if(++gCnt_firstCalibration < CALIBRATION_DURATION_MS) {
+        // 가속도 읽기
+        double z = current_accel.z;
+
+        // EWMA + HPF 적용 (하지만 캘리용으론 생략 가능)
+        calib_samples[calib_cnt++] = (float)current_accel.z;
+    }else {
+        // 평균 계산
+        for (int i = 0; i < calib_cnt; i++) thresh_mean += calib_samples[i];
+        thresh_mean /= calib_cnt;
+        // 표준편차 계산
+        for (int i = 0; i < calib_cnt; i++)
+            thresh_std += powf(calib_samples[i] - thresh_mean, 2);
+        thresh_std = sqrtf(thresh_std / calib_cnt);
+        
+        // 최종 임계치 = mean + k * std
+        threshold_level_z = thresh_mean + THRESHOLD_STD_FACTOR * thresh_std;
+        if(bSensitivityLevel == 2) threshold_level_z = threshold_level_z * 0.7;
+        gCnt_ReCalibration = 0;
+        recalib_sample_cnt = 0;
+        bfirstCal = false;  // 첫 cal 끝
+
+    }
+}
+
+void recalibrate_threshold(float z_axis) {
+    // 짧게 샘플링하면서 Z축 값 수집
+    if(++gCnt_ReCalibration < RECALIBRATION_DURATION_MS) {
+        recalib_accum[recalib_sample_cnt++] = (float)current_accel.z;
+    }else {
+        // 평균·표준편차 계산
+        float sum = 0, sum2 = 0;
+        for (int i = 0; i < recalib_sample_cnt; i++) {
+            sum  += recalib_accum[i];
+            sum2 += recalib_accum[i] * recalib_accum[i];
+        }
+        float mean = sum / recalib_sample_cnt;
+        float var  = (sum2 / recalib_sample_cnt) - (mean * mean);
+        float std  = sqrtf(var > 0 ? var : 0);
+
+        gCnt_ReCalibration = 0; // 다음에 다시 보정 위해 초기화
+        recalib_sample_cnt = 0; // 다음에 다시 보정 위해 초기화
+        threshold_level_z = mean + THRESHOLD_STD_FACTOR * std;
+        if(bSensitivityLevel == 2) threshold_level_z = threshold_level_z * 0.7;
+    }
+}
+
+void ledGpioSet(void)
+{
+    // DL_GPIO_reset(GPIOA);
+    // DL_GPIO_enablePower(GPIOA);
+    // delay_cycles(POWER_STARTUP_DELAY);
+
+    DL_GPIO_initDigitalOutput(LED_RED_PIN_0_IOMUX);
+    DL_GPIO_initDigitalOutput(LED_GREEN_PIN_1_IOMUX);
+    DL_GPIO_clearPins(GPIOA, LED_RED_PIN_0_PIN |
+		LED_GREEN_PIN_1_PIN);
+    DL_GPIO_enableOutput(GPIOA, LED_RED_PIN_0_PIN |
+		LED_GREEN_PIN_1_PIN);
+}
+
+// Z축만 예시. X/Y도 같은 구조로 확장 가능
+float high_pass_filter(float raw_z) {
+    // EWMA 로 저주파 
+    ewma_z = EWMA_ALPHA * raw_z + (1 - EWMA_ALPHA) * ewma_z;
+    float low_freq = ewma_z;
+    
+    // 1차 IIR 고역통과
+    float hpf_z = raw_z - low_freq + HPF_FACTOR * hpf_z_prev;
+    hpf_z_prev = hpf_z;
+    return hpf_z;
+}
+
 
 int main(){
 
@@ -213,6 +377,7 @@ int main(){
 
     gI2cControllerStatus = I2C_STATUS_IDLE;
 
+// opt3007과 bma530 순서 주의!!!
     ti_opt3007_registers devReg;
  	ti_opt3007_assignRegistermap(&devReg);
     ti_opt3007_setRn(&devReg);	
@@ -283,7 +448,7 @@ int main(){
                 {
                     __BKPT(0);
 
-                    if(downCnt_zAxis == 2)
+                    if(downCnt_zAxis == 2)  // 민감 모드
                     {
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                         DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
@@ -298,11 +463,12 @@ int main(){
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                         DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
-                        threshold_level_z = ACCELERATION_THRESHOLD_1_Z;     // 민감
+                        threshold_level_z = ACCELERATION_THRESHOLD_1_Z * 0.7;     // 민감
 
+                        bSensitivityLevel = 2;
                         modeSel = SMART_CHEMI;
                     }
-                    else if(downCnt_zAxis >= 3)
+                    else if(downCnt_zAxis >= 3) // 일반캐미 모드
                     {
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                         DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
@@ -319,7 +485,7 @@ int main(){
 
                         modeSel = NORMAL_CHEMI;
                     }
-                    else {
+                    else {  // 스마트캐미 모드
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                         DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
@@ -334,7 +500,7 @@ int main(){
                         DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
                         threshold_level_z = ACCELERATION_THRESHOLD_0_Z;     // 보통
-
+                        bSensitivityLevel = 1;
                         modeSel = SMART_CHEMI;
                     }
                 }
@@ -344,6 +510,7 @@ int main(){
 
                 break;
             case NORMAL_CHEMI : 
+                    // 일반 캐미 모드는 배터리 끝날때까지 LED ON 시킴.
                     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
                     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
 
@@ -352,6 +519,7 @@ int main(){
                 break;
             case SMART_CHEMI :
 
+                // 조도 몇 배터리 모니터링 기능
                 if(opt300checkCnt++ >= OPTTIME_10SEC)
                 {   
                     ledOn_lux = ti_opt3007_readLux();       // led + 주변환경 밝기 
@@ -378,10 +546,10 @@ int main(){
                     if(opt300checkCnt >= OPTTIME_10SEC + 5)
                     {
                         if(optDarkCnt >= 3) {
-                            gLED_On = true;
+                            gNowNight = true;
                         }
                         else if (optBrightCnt >= 3){
-                            gLED_On = false;
+                            gNowNight = false;
                         }
 
                         optBrightCnt = 0;
@@ -389,29 +557,38 @@ int main(){
                         opt300checkCnt = 0;
                     }
                     else{
-                        gLED_On = false;
+                        gNowNight = false;
                     }
                 }
 
                 // gLED_On = true;
-                if(gLED_On == true){
+                // 입질 기능
+                if(gNowNight == true){    // 즉 아래 기능은 밤에만 작동하도록 함.
 
                     bma530_readAccel();
                     current_accel.x = cami_accel[0];
                     current_accel.y = cami_accel[1];
                     current_accel.z = cami_accel[2];
-                    
-                    if(current_accel.z > -0.7)
-                    {
-                        if(fishEndCnt++ > OPTTIME_30SEC)
-                        {
-                            gAllLedOff = true;
-                        }
-                    }
-                    else {
 
-                        gAllLedOff = false;
+ #if 1
+                    // loop 내 적절한 위치에 삽입
+                    float raw_z = (float)current_accel.z;
+                    float z_delta = fabsf(high_pass_filter(raw_z));
+
+                    if (z_delta > threshold_level_z) {
+                        significant_movement_count++;
+                        // 순간 민감도에 의한 오류 제거위해 카운터 적용
+                        if (significant_movement_count >= SIGNIFICANT_MOVEMENT_DURATION) {
+                            gFish_Red = true;
+                            significant_movement_count = 0;
+                        }
+                    } else {
+                        significant_movement_count = 0;
                     }
+                    
+                    previous_accel_z = z_delta;
+
+#else
 
                     // 필터 적용
                     AccelerationData filtered_accel = apply_filters(current_accel);
@@ -428,11 +605,31 @@ int main(){
                     } else {
                         significant_movement_count = 0;
                     }
-
+                    
                     previous_filtered_accel = filtered_accel;
 
+#endif
+
+                    // 주기적으로 자동 보정 기능 
+                    if(is_vertical_stable()){
+                        if(bfirstCal){
+                            calibrate_threshold(z_delta);
+                        }else{
+                            recalibrate_threshold(z_delta);
+                        }
+                    }else if(current_accel.z > -0.7) {
+                        if(fishEndCnt++ > OPTTIME_30SEC)
+                        {
+                            // 기울어져 있어 사용. 대기중..
+                            gAllLedOff = true;
+                        }
+                    }else {
+
+                        gAllLedOff = false;
+                    }
                 }
 
+                // led 관련 기능
                 if(gAllLedOff == false){
                     if(gFish_Red == true){
 
@@ -441,7 +638,7 @@ int main(){
                             gFish_Red = false;
                         }
 
-                        if(gLED_On == true){
+                        if(gNowNight == true){
                             DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);     // RED ON
                             testcnt[0]++;
                         }
@@ -453,7 +650,7 @@ int main(){
                         testcnt[3]++;
                     }
                     else {
-                        if(gLED_On == true){
+                        if(gNowNight == true){
                             if(gLowVoltage == true)
                             {
                                 if(lowVoltCnt++ > 15){      // 1.5초 주기
@@ -498,8 +695,6 @@ int main(){
 }
 
 
-
-
 /**
  * STANDBY0 Clock, runs all the time at the same frequency
  */
@@ -510,6 +705,8 @@ void TIMER_0_INST_IRQHandler(void)
         case DL_TIMERG_IIDX_ZERO:
             if (count == 1) {
                 gTogglePolicy = true;
+                gCnt_100ms++;
+                gVerticalCnt_100ms++;
                 count         = 1;
             } else {
                 count--;
@@ -583,120 +780,3 @@ void I2C_INST_IRQHandler(void) {
     }
 }
 
-
-void ledGpioSet(void)
-{
-    // DL_GPIO_reset(GPIOA);
-    // DL_GPIO_enablePower(GPIOA);
-    // delay_cycles(POWER_STARTUP_DELAY);
-
-    DL_GPIO_initDigitalOutput(LED_RED_PIN_0_IOMUX);
-    DL_GPIO_initDigitalOutput(LED_GREEN_PIN_1_IOMUX);
-    DL_GPIO_clearPins(GPIOA, LED_RED_PIN_0_PIN |
-		LED_GREEN_PIN_1_PIN);
-    DL_GPIO_enableOutput(GPIOA, LED_RED_PIN_0_PIN |
-		LED_GREEN_PIN_1_PIN);
-}
-
-#ifdef ADC_USE
-void batteryCheck(void)
-{
-
-    while (false == gCheckADC) {
-        __WFE();
-    }
-
-    gCheckADC = false;
-
-    /* Result in integer for efficient processing */
-    adcResult = DL_ADC12_getMemResult(ADC12_0_INST, DL_ADC12_MEM_IDX_0);
-
-    /* Apply calibrated ADC offset - workaround for ADC_ERR_06 */
-    int16_t adcRaw = (int16_t) adcResult + gADCOffset;
-    if (adcRaw < 0) {
-        adcRaw = 0;
-    }
-    if (adcRaw > 4095) {
-        adcRaw = 4095;
-    }
-    adcResult = (uint16_t) adcRaw;
-
-    /* Result in float for simpler reading */
-    gAdcResultVolts =
-        (adcResult * ADC12_REF_VOLTAGE) / (1 << ADC12_BIT_RESOLUTION) * 3;
-
-    if (gAdcResultVolts > ADC12_SUPPLY_MONITOR_VOLTAGE) {
-        gLowVoltage = false;
-    } else {
-        gLowVoltage = true;
-    }
-
-}
-
-
-void ADC12_0_INST_IRQHandler(void)
-{
-    switch (DL_ADC12_getPendingInterrupt(ADC12_0_INST)) {
-        case DL_ADC12_IIDX_MEM0_RESULT_LOADED:
-            gCheckADC = true;
-            break;
-        default:
-            break;
-    }
-} 
-
-/* ADC12_0 Initialization */
-static const DL_ADC12_ClockConfig gADC12_0ClockConfig = {
-    .clockSel       = DL_ADC12_CLOCK_ULPCLK,
-    .divideRatio    = DL_ADC12_CLOCK_DIVIDE_8,
-    .freqRange      = DL_ADC12_CLOCK_FREQ_RANGE_20_TO_24,
-};
-
-void adcSet(void)
-{
-    // DL_GPIO_reset(GPIOA);
-    DL_ADC12_reset(ADC12_0_INST);
-    DL_VREF_reset(VREF);
-
-    // DL_GPIO_enablePower(GPIOA);
-    DL_ADC12_enablePower(ADC12_0_INST);
-    DL_VREF_enablePower(VREF);
-    delay_cycles(POWER_STARTUP_DELAY);
-
-    DL_ADC12_setClockConfig(ADC12_0_INST, (DL_ADC12_ClockConfig *) &gADC12_0ClockConfig);
-    DL_ADC12_initSingleSample(ADC12_0_INST,
-        DL_ADC12_REPEAT_MODE_ENABLED, DL_ADC12_SAMPLING_SOURCE_AUTO, DL_ADC12_TRIG_SRC_SOFTWARE,
-        DL_ADC12_SAMP_CONV_RES_10_BIT, DL_ADC12_SAMP_CONV_DATA_FORMAT_UNSIGNED);
-    DL_ADC12_configConversionMem(ADC12_0_INST, ADC12_0_ADCMEM_0,
-        DL_ADC12_INPUT_CHAN_15, DL_ADC12_REFERENCE_VOLTAGE_INTREF, DL_ADC12_SAMPLE_TIMER_SOURCE_SCOMP0, DL_ADC12_AVERAGING_MODE_DISABLED,
-        DL_ADC12_BURN_OUT_SOURCE_DISABLED, DL_ADC12_TRIGGER_MODE_AUTO_NEXT, DL_ADC12_WINDOWS_COMP_MODE_DISABLED);
-    DL_ADC12_setSampleTime0(ADC12_0_INST,375);
-
-
-
-    /* Enable ADC12 interrupt */
-    DL_ADC12_clearInterruptStatus(ADC12_0_INST,(DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED));
-    DL_ADC12_enableInterrupt(ADC12_0_INST,(DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED));
-    DL_ADC12_enableConversions(ADC12_0_INST);
-}
-
-static const DL_VREF_ClockConfig gVREFClockConfig = {
-    .clockSel = DL_VREF_CLOCK_BUSCLK,
-    .divideRatio = DL_VREF_CLOCK_DIVIDE_1,
-};
-static const DL_VREF_Config gVREFConfig = {
-    .vrefEnable     = DL_VREF_ENABLE_ENABLE,
-    .bufConfig      = DL_VREF_BUFCONFIG_OUTPUT_2_5V,
-    .shModeEnable   = DL_VREF_SHMODE_DISABLE,
-    .holdCycleCount = DL_VREF_HOLD_MIN,
-    .shCycleCount   = DL_VREF_SH_MIN,
-};
-
-SYSCONFIG_WEAK void SYSCFG_DL_VREF_init(void) {
-    DL_VREF_setClockConfig(VREF,
-        (DL_VREF_ClockConfig *) &gVREFClockConfig);
-    DL_VREF_configReference(VREF,
-        (DL_VREF_Config *) &gVREFConfig);
-}
-
-#endif

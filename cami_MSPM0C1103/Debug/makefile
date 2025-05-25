@@ -17,7 +17,7 @@ ORDERED_OBJS += \
 "./application/bma530.o" \
 "./application/bma530_features.o" \
 "./application/common.o" \
-"./application/main_adc .o" \
+"./application/main_autoCal .o" \
 "./application/opt3007_functions.o" \
 "./application/opt3007_hostControl.o" \
 "./application/opt3007_registers.o" \
@@ -153,8 +153,8 @@ cami_MSPM0C1103.out: $(OBJS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(GEN_MISC_FILES__QUOTED)$(GEN_FILES__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "ti_msp_dl_config.o" "startup_mspm0c110x_ticlang.o" "application\accelerometer.o" "application\bma5.o" "application\bma530.o" "application\bma530_features.o" "application\common.o" "application\main_adc .o" "application\opt3007_functions.o" "application\opt3007_hostControl.o" "application\opt3007_registers.o" 
-	-$(RM) "ti_msp_dl_config.d" "startup_mspm0c110x_ticlang.d" "application\accelerometer.d" "application\bma5.d" "application\bma530.d" "application\bma530_features.d" "application\common.d" "application\main_adc .d" "application\opt3007_functions.d" "application\opt3007_hostControl.d" "application\opt3007_registers.d" 
+	-$(RM) "ti_msp_dl_config.o" "startup_mspm0c110x_ticlang.o" "application\accelerometer.o" "application\bma5.o" "application\bma530.o" "application\bma530_features.o" "application\common.o" "application\main_autoCal .o" "application\opt3007_functions.o" "application\opt3007_hostControl.o" "application\opt3007_registers.o" 
+	-$(RM) "ti_msp_dl_config.d" "startup_mspm0c110x_ticlang.d" "application\accelerometer.d" "application\bma5.d" "application\bma530.d" "application\bma530_features.d" "application\common.d" "application\main_autoCal .d" "application\opt3007_functions.d" "application\opt3007_hostControl.d" "application\opt3007_registers.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

@@ -12,10 +12,10 @@ application/%.o: ../application/%.c $(GEN_OPTS) | $(GEN_FILES) $(GEN_MISC_FILES)
 	@echo 'Finished building: "$<"'
 	@echo ' '
 
-application/main_adc\ .o: ../application/main_adc\ .c $(GEN_OPTS) | $(GEN_FILES) $(GEN_MISC_FILES)
+application/main_autoCal\ .o: ../application/main_autoCal\ .c $(GEN_OPTS) | $(GEN_FILES) $(GEN_MISC_FILES)
 	@echo 'Building file: "$<"'
 	@echo 'Invoking: Arm Compiler'
-	"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/bin/tiarmclang.exe" -c @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -I"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103" -I"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/Debug" -I"C:/ti/mspm0_sdk_2_04_00_06/source/third_party/CMSIS/Core/Include" -I"C:/ti/mspm0_sdk_2_04_00_06/source" -gdwarf-3 -MMD -MP -MF"application/main_adc .d_raw" -MT"application/main_adc\ .o"  $(GEN_OPTS__FLAG) -o"$@" "$<"
+	"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/bin/tiarmclang.exe" -c @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -I"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103" -I"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/Debug" -I"C:/ti/mspm0_sdk_2_04_00_06/source/third_party/CMSIS/Core/Include" -I"C:/ti/mspm0_sdk_2_04_00_06/source" -gdwarf-3 -MMD -MP -MF"application/main_autoCal .d_raw" -MT"application/main_autoCal\ .o"  $(GEN_OPTS__FLAG) -o"$@" "$<"
 	@echo 'Finished building: "$<"'
 	@echo ' '
 

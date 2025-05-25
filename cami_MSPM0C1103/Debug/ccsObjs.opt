@@ -5,7 +5,7 @@
 "./application/bma530.o"
 "./application/bma530_features.o"
 "./application/common.o"
-"./application/main_adc .o"
+"./application/main_autoCal .o"
 "./application/opt3007_functions.o"
 "./application/opt3007_hostControl.o"
 "./application/opt3007_registers.o"
