@@ -24,17 +24,22 @@ void ti_opt3007_setSensorConversionTime800mS(ti_opt3007_registers* devReg){
 }
 
 void ti_opt3007_setRn(ti_opt3007_registers* devReg){
-	ti_opt3007_deviceRegister_write(&devReg->RN,0);
+	ti_opt3007_deviceRegister_write(&devReg->RN,12);  // 0 -> 12 변경  2025.06.03
 }
 
+
+uint16_t readValue,mantissa;
+uint8_t myexp;
+double lux;
+
 double ti_opt3007_readLux(void){
-	uint8_t exp;
-	uint16_t readValue,mantissa;
-	double lux;
+
+
+
 	readValue=ti_opt3007_I2C_read(0x00); ///	* Invoked an I2C Read
 	mantissa=readValue&0x0FFF;
-	exp=readValue>>12;
-	lux=10e-3*(((uint16_t) 1)<<exp)*mantissa;
+	myexp=readValue>>12;
+	lux=10e-3*(((uint16_t) 1)<<myexp)*mantissa;
 	return lux;
 }
 

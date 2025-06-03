@@ -26,7 +26,6 @@
 
 
 // #define ADC_USE
-
 #if ADC_USE
 #define ADC12_0_INST                                                        ADC0
 #define ADC12_0_INST_IRQHandler                                  ADC0_IRQHandler
@@ -73,14 +72,14 @@ void batteryCheck(void);
 #define SENSITIVE_MODE  4
 
 #define PI 3.14159265
-#define OPTTIME_19MIN  (10*6*10)  // (100ms x 10 x 6 = 60초 x 10 
-#define OPTTIME_1MIN   (10*6)  // 100ms x 10 x 6 = 60sec 
-#define OPTTIME_10SEC  (10*10)  // (100ms x 10  = 1sec) * 10 = 10초
+#define OPTTIME_20MIN  (10*10*120)  // 1200초
+#define OPTTIME_1MIN   (10*6)  // 100ms x 10 x 6 = 6sec 
+#define OPTTIME_10SEC  (10*10)  // (100ms x 10  = 1sec) * 10 x 60 = 600초 
 #define OPTTIME_30SEC  (10*10*3)  // (100ms x 10  = 1sec) * 10 * 3 = 30초
 
 #define DELAY (24000000/1000000)
 
-#define LOW_DELTA_THRESHOLD       (5.0L)     // 실험치 측정 필요
+#define LOW_DELTA_THRESHOLD       (60.0L)     // 실험치 측정 필요 2.6 V ->56 lux
 #define NIGHT_THRESHOLD           (10.0L)    // 밤 실험치 측정 필요
 
 // --- 필터링 파라미터 ---
@@ -90,7 +89,7 @@ void batteryCheck(void);
 // --- 적응 임계치 초기화 파라미터 ---
 #define CALIBRATION_DURATION_MS   12    // 캘리브레이션 기간 , 5초 x 12 = 60 초
 #define CALIBRATION_INTERVAL_MS   100     // 캘리 측정 간격 (ms)
-#define THRESHOLD_STD_FACTOR      3.0f    // (평균 + k*표준편차)
+#define THRESHOLD_STD_FACTOR      1.0 //3.0f    // (평균 + k*표준편차)
 
 // --- 이벤트 지속시간 및 딜레이 ---
 #define DETECTION_LOCKOUT_MS      500     // 한번 감지 후 재감지 금지 시간 (ms)
@@ -110,6 +109,8 @@ static float recalib_accum[RECALIBRATION_DURATION_MS / RECALIBRATION_SAMPLE_MS];
 void I2C_INST_IRQHandler(void);
 
 void ledGpioSet(void);
+float high_pass_filter(float raw_z);
+
 
 /* Data sent to the Target */
 uint8_t gTxPacket[I2C_TX_MAX_PACKET_SIZE] = {0x00,};
@@ -138,7 +139,7 @@ uint16_t fishEndCnt;
 volatile bool gTogglePolicy;
 static bool gFish_Red;
 static bool gLED_On;
-static bool gNowNight;
+static bool gNowNight = true;
 static bool gAllLedOff = false;
 static bool gLowVoltage = false;
 bool bUpstate = false;
@@ -170,9 +171,13 @@ AccelerationData accel_history[MOVING_AVERAGE_WINDOW_SIZE];
 int16_t history_index = 0;
 
 // 입질 감지를 위한 임계값 (Z축, 조정 필요)
-#define ACCELERATION_THRESHOLD_0_Z      0.01//1.0 // Z축 변화량 임계값 (조정 필요)
-#define ACCELERATION_THRESHOLD_1_Z      0.007//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_0_Z      (0.01f)//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_1_Z      (0.007f)//1.0 // Z축 변화량 임계값 (조정 필요)
 #define SIGNIFICANT_MOVEMENT_DURATION   3 // 연속된 움직임 감지 횟수 (조정 필요)
+#define SLOW_DROP_THRESHOLD             (0.02f)
+#define SLOW_DROP_DURATION_COUNTS   3      // 200 ms → 2샘플, 300 ms → 3샘플
+#define DETECTION_LOCKOUT_COUNTS    10      // 1000 ms → 10샘플
+
 
 // 고역 통과 필터 파라미터 (간단한 차분 형태)
 #define HIGH_PASS_FILTER_FACTOR 0.8 // 0에 가까울수록 저주파 성분 제거 강도 증가
@@ -198,7 +203,9 @@ static int   calib_cnt = 0;
 static float thresh_mean = 0.0f, thresh_std = 0.0f;
 static uint32_t last_detect_time = 0;
 
-
+float raw_z;
+float prev_raw_z;
+float z_delta;
 
 
 // 추가 설정
@@ -216,33 +223,64 @@ typedef enum {
 static SystemState sys_state = STATE_WAIT_VERTICAL;
 static uint32_t vertical_detect_time = 0;
 
+bool en_test = false;
+bool vertical;
+bool cx;
+bool cy;
+bool cz;
+
+static bool     slow_event_flag = false;
+static int      slow_event_cnt = 0;
+static int      lockout_cnt = 0;
+static bool     in_lockout = false;
+float low_freq;
+float drop;
+
+
 // 수직 상태 판정 함수
 bool is_vertical_stable(void) {
     static uint32_t start = 0;
     static bool timing = false;
-    
-    
+        
     // Z축이 중력가속도 ≈1g, X/Y축은 거의 0g 근처인지 확인
-    const double G = 1.8f;
-    const double TOL = 0.5f;
-    bool vertical = (fabs(current_accel.x - G) < TOL) &&
-                    (fabs(current_accel.y) < TOL) &&
-                    (fabs(current_accel.z) < TOL);
+    const float G = -1.8f;
+    const float TOL = 0.5f;
 
-    if (vertical) {
-        if (!timing) {
-            timing = true;
-            gVerticalCnt_100ms = 0;
-        } else if (gVerticalCnt_100ms >= VERTICAL_STABLE_DURATION_MS) {
-            // 충분히 수직 상태가 유지됨
-            timing = false;
-            gCnt_firstCalibration = 0;
-            return true;
-        }
-    } else {
-        // 수직 판정 실패 시 타이머 리셋
+    cx = (fabs((float)current_accel.x) < TOL);
+    cy = (fabs((float)current_accel.y) < TOL);
+    cz = (fabs((float)current_accel.z - G) < TOL+0.3);
+
+    vertical = cx && cy && cz;
+    // vertical = (fabs((float)current_accel.x - G) < TOL) &&
+    //                 (fabs((float)current_accel.y) < TOL) &&
+    //                 (fabs((float)current_accel.z) < TOL);
+
+    if(en_test)   __BKPT(0);
+    // if (vertical) {
+    //     if (!timing) {
+    //         timing = true;
+    //         gVerticalCnt_100ms = 0;
+    //     } else if (gVerticalCnt_100ms >= VERTICAL_STABLE_DURATION_MS) {
+    //         // 충분히 수직 상태가 유지됨
+    //         timing = false;
+    //         // gCnt_firstCalibration = 0;
+    //         return true;
+    //     }
+    // } else {
+    //     // 수직 판정 실패 시 타이머 리셋
+    //     timing = false;
+    // }
+
+    if (!timing) {
+        timing = true;
+        gVerticalCnt_100ms = 0;
+    } else if (gVerticalCnt_100ms >= VERTICAL_STABLE_DURATION_MS) {
+        // 충분히 수직 상태가 유지됨
         timing = false;
+        // gCnt_firstCalibration = 0;
+        return true;
     }
+
     return false;
 }
 
@@ -280,9 +318,10 @@ void calibrate_threshold(float z_axis) {
     if(++gCnt_firstCalibration < CALIBRATION_DURATION_MS) {
         // 가속도 읽기
         double z = current_accel.z;
+        float delta = fabsf(high_pass_filter(z));
 
         // EWMA + HPF 적용 (하지만 캘리용으론 생략 가능)
-        calib_samples[calib_cnt++] = (float)current_accel.z;
+        calib_samples[calib_cnt++] = (float)delta;
     }else {
         // 평균 계산
         for (int i = 0; i < calib_cnt; i++) thresh_mean += calib_samples[i];
@@ -298,6 +337,7 @@ void calibrate_threshold(float z_axis) {
         gCnt_ReCalibration = 0;
         recalib_sample_cnt = 0;
         bfirstCal = false;  // 첫 cal 끝
+        gCnt_firstCalibration = 0;
 
     }
 }
@@ -305,7 +345,10 @@ void calibrate_threshold(float z_axis) {
 void recalibrate_threshold(float z_axis) {
     // 짧게 샘플링하면서 Z축 값 수집
     if(++gCnt_ReCalibration < RECALIBRATION_DURATION_MS) {
-        recalib_accum[recalib_sample_cnt++] = (float)current_accel.z;
+
+        float redelta = fabsf(high_pass_filter((float)current_accel.z));
+
+        recalib_accum[recalib_sample_cnt++] = redelta;
     }else {
         // 평균·표준편차 계산
         float sum = 0, sum2 = 0;
@@ -321,8 +364,8 @@ void recalibrate_threshold(float z_axis) {
         recalib_sample_cnt = 0; // 다음에 다시 보정 위해 초기화
         threshold_level_z = mean + THRESHOLD_STD_FACTOR * std;
         if(bSensitivityLevel == 2) threshold_level_z = threshold_level_z * 0.7;
-    }
 }
+    }
 
 void ledGpioSet(void)
 {
@@ -342,10 +385,10 @@ void ledGpioSet(void)
 float high_pass_filter(float raw_z) {
     // EWMA 로 저주파 
     ewma_z = EWMA_ALPHA * raw_z + (1 - EWMA_ALPHA) * ewma_z;
-    float low_freq = ewma_z;
+    low_freq = ewma_z;
     
     // 1차 IIR 고역통과
-    float hpf_z = raw_z - low_freq + (HPF_FACTOR * hpf_z_prev);
+    float hpf_z = raw_z - low_freq + HPF_FACTOR * hpf_z_prev;
     hpf_z_prev = hpf_z;
     return hpf_z;
 }
@@ -390,7 +433,7 @@ int main(){
 
     DL_TimerG_startCounter(TIMER_0_INST);
     // DL_TimerG_startCounter(TIMER_1_INST);
-    opt300checkCnt = OPTTIME_19MIN - 1;  // 첫번째 밝기 측정위해 설정
+    opt300checkCnt = 0;
     gTogglePolicy = false;
 
     // history 배열 초기화
@@ -520,15 +563,18 @@ int main(){
             case SMART_CHEMI :
 
                 // 조도 몇 배터리 모니터링 기능
-                if(opt300checkCnt++ >= OPTTIME_10SEC)
-                {   
+                if(opt300checkCnt++ >= OPTTIME_20MIN){   
                     ledOn_lux = ti_opt3007_readLux();       // led + 주변환경 밝기 
 
                     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
                     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-                    delay_cycles(12000000);
+                    delay_cycles(1200000);
                     ledOff_lux = ti_opt3007_readLux();      // 주변밝기
                     optlux = (ledOn_lux > ledOff_lux) ? (ledOn_lux - ledOff_lux) : 100.0;
+
+                    if(gNowNight == true) {
+                        DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
+                    }
 
                     if(optlux < LOW_DELTA_THRESHOLD)
                     {
@@ -543,7 +589,7 @@ int main(){
                         optBrightCnt++;
                     }
 
-                    if(opt300checkCnt >= OPTTIME_10SEC + 5)
+                    if(opt300checkCnt >= OPTTIME_20MIN + 5)
                     {
                         if(optDarkCnt >= 3) {
                             gNowNight = true;
@@ -571,22 +617,46 @@ int main(){
                     current_accel.z = cami_accel[2];
 
  #if 1
-                    // loop 내 적절한 위치에 삽입
-                    float raw_z = (float)current_accel.z;
-                    float z_delta = fabsf(high_pass_filter(raw_z));
+                    raw_z = (float)current_accel.z;
+                    z_delta = fabsf(high_pass_filter(raw_z));
 
-                    if (z_delta > threshold_level_z) {
+                    bool fast_detected  = (z_delta > threshold_level_z);
+
+                    // 3) 느린 드리프트 감지 (연속 SLOW_DROP_DURATION_COUNTS샘플 유지)
+                    bool slow_detected = false;
+                    drop = prev_raw_z - raw_z;
+
+                    if (drop > SLOW_DROP_THRESHOLD) {
                         significant_movement_count++;
                         // 순간 민감도에 의한 오류 제거위해 카운터 적용
-                        if (significant_movement_count >= SIGNIFICANT_MOVEMENT_DURATION) {
-                            gFish_Red = true;
+                        if (significant_movement_count >= SLOW_DROP_DURATION_COUNTS) {
+                            // gFish_Red = true;
+                            slow_detected = true;
                             significant_movement_count = 0;
                         }
                     } else {
                         significant_movement_count = 0;
                     }
                     
-                    previous_accel_z = z_delta;
+                // 4) 락아웃 카운터 처리
+                    if (in_lockout) {
+                        if (++lockout_cnt >= DETECTION_LOCKOUT_COUNTS) {
+                            in_lockout = false;
+                            lockout_cnt = 0;
+                        }
+                    }
+
+                    // 5) 최종 입질 판정
+                    if (!in_lockout && (fast_detected || slow_detected)) {
+                        gFish_Red   = true;
+                        in_lockout  = true;
+                        lockout_cnt = 0;
+                        // → 이곳에 입질 시 실행할 액션 추가
+                    } else {
+                        gFish_Red = false;
+                    }
+
+                    prev_raw_z = raw_z;
 
 #else
 
@@ -610,13 +680,17 @@ int main(){
 
 #endif
 
+#if 0
                     // 주기적으로 자동 보정 기능 
                     if(is_vertical_stable()){
-                        if(bfirstCal){
-                            calibrate_threshold(z_delta);
-                        }else{
-                            recalibrate_threshold(z_delta);
-                        }
+
+                        calibrate_threshold(z_delta);
+
+                        // if(bfirstCal){
+                        //     calibrate_threshold(z_delta);
+                        // }else{
+                        //     recalibrate_threshold(z_delta);
+                        // }
                     }else if(current_accel.z > -0.7) {
                         if(fishEndCnt++ > OPTTIME_30SEC)
                         {
@@ -627,13 +701,15 @@ int main(){
 
                         gAllLedOff = false;
                     }
+
+#endif                    
                 }
 
                 // led 관련 기능
                 if(gAllLedOff == false){
                     if(gFish_Red == true){
 
-                        if(fishcheckCnt++ >= 18){  // 100ms x 50 = 5sec
+                        if(fishcheckCnt++ >= 18){  // 1.8 sec
                             fishcheckCnt = 0;
                             gFish_Red = false;
                         }
