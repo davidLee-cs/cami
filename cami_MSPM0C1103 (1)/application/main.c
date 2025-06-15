@@ -81,12 +81,20 @@ int main(){
 
     gI2cControllerStatus = I2C_STATUS_IDLE;
 
-    // delay_cycles(DELAY/20);
- 
-    bma530Accel_init();
+    // ti_opt3007_registers devReg;
+	// ti_opt3007_assignRegistermap(&devReg);
+    // ti_opt3007_setRn(&devReg);	
+    // // delay_cycles(DELAY/20);
     ti_opt3007_registers devReg;
+ 	ti_opt3007_assignRegistermap(&devReg);
+    ti_opt3007_setRn(&devReg);	
+    ti_opt3007_setSensorContinuous(&devReg);
+    ti_opt3007_setSensorConversionTime100mS(&devReg);
+    delay_cycles(24000);
 
-	ti_opt3007_assignRegistermap(&devReg);
+ 
+    // bma530Accel_init();
+
 	
     // ti_opt3007_setSensorSingleShot(&devReg);
     // while(1)
@@ -102,7 +110,6 @@ int main(){
     // delay_cycles(DELAY/20);
 	// ti_opt3007_setSensorConversionTime100mS(&devReg);
     // delay_cycles(DELAY/20);
-    ti_opt3007_setRn(&devReg);	
 
     DL_TimerG_startCounter(TIMER_0_INST);
     // DL_TimerG_startCounter(TIMER_1_INST);
@@ -133,16 +140,16 @@ int main(){
         DL_SYSCTL_setPowerPolicyRUN0SLEEP0();  
         // DL_TimerG_startCounter(TIMER_1_INST);   
 
-        // if(gToggleLed ^= 1)
-        // {
-        //     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        //     DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+        if(gToggleLed ^= 1)
+        {
+            DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+            DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
 
-        // }
-        // else {
-        //     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
-        //     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
-        // }
+        }
+        else {
+            DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);
+            DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);
+        }
 
 
         // if(opt300checkCnt > OPTTIME)    // 10초
@@ -165,7 +172,7 @@ int main(){
 #endif
 
         opt300checkCnt++;
-        bma530_readAccel();
+        // bma530_readAccel();
 
         // if((cami_accel[2] > 2.7) || (cami_accel[2] < 2.0))
         // {

@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "chemi_MSPM0C1104_ver1p0",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "chemi_MSPM0C1104_ver1p0",
+                "resourceId": "/chemi_MSPM0C1104_ver1p0"
+            }
+        },
+        {
+            "name": "cami_MSPM0C1103",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "cami_MSPM0C1103",
+                "resourceId": "/cami_MSPM0C1103"
+            }
+        },
+        {
+            "name": "i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang",
+                "resourceId": "/i2c_controller_rw_multibyte_fifo_interrupts_LP_MSPM0C1104_nortos_ticlang"
+            }
+        },
+        {
+            "name": "cami_MSPM0C1103_BMA530",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "cami_MSPM0C1103_BMA530",
+                "resourceId": "/cami_MSPM0C1103_BMA530"
+            }
+        }
+    ]
+}

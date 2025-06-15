@@ -11,7 +11,7 @@ C_SRCS += \
 ../application/bma530.c \
 ../application/bma530_features.c \
 ../application/common.c \
-../application/main_ver1p2.c \
+../application/main_ver1p3.c \
 ../application/opt3007_functions.c \
 ../application/opt3007_hostControl.c \
 ../application/opt3007_registers.c 
@@ -22,7 +22,7 @@ C_DEPS += \
 ./application/bma530.d \
 ./application/bma530_features.d \
 ./application/common.d \
-./application/main_ver1p2.d \
+./application/main_ver1p3.d \
 ./application/opt3007_functions.d \
 ./application/opt3007_hostControl.d \
 ./application/opt3007_registers.d 
@@ -33,7 +33,7 @@ OBJS += \
 ./application/bma530.o \
 ./application/bma530_features.o \
 ./application/common.o \
-./application/main_ver1p2.o \
+./application/main_ver1p3.o \
 ./application/opt3007_functions.o \
 ./application/opt3007_hostControl.o \
 ./application/opt3007_registers.o 
@@ -44,7 +44,7 @@ OBJS__QUOTED += \
 "application\bma530.o" \
 "application\bma530_features.o" \
 "application\common.o" \
-"application\main_ver1p2.o" \
+"application\main_ver1p3.o" \
 "application\opt3007_functions.o" \
 "application\opt3007_hostControl.o" \
 "application\opt3007_registers.o" 
@@ -55,7 +55,7 @@ C_DEPS__QUOTED += \
 "application\bma530.d" \
 "application\bma530_features.d" \
 "application\common.d" \
-"application\main_ver1p2.d" \
+"application\main_ver1p3.d" \
 "application\opt3007_functions.d" \
 "application\opt3007_hostControl.d" \
 "application\opt3007_registers.d" 
@@ -66,7 +66,7 @@ C_SRCS__QUOTED += \
 "../application/bma530.c" \
 "../application/bma530_features.c" \
 "../application/common.c" \
-"../application/main_ver1p2.c" \
+"../application/main_ver1p3.c" \
 "../application/opt3007_functions.c" \
 "../application/opt3007_hostControl.c" \
 "../application/opt3007_registers.c" 

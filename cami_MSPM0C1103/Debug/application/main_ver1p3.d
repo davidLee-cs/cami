@@ -1,6 +1,6 @@
 # FIXED
 
-application/main_ver1p2.o: ../application/main_ver1p2.c \
+application/main_ver1p3.o: ../application/main_ver1p3.c \
  C:/ti/mspm0_sdk_2_04_00_06/source/ti/driverlib/m0p/dl_core.h \
  C:/ti/mspm0_sdk_2_04_00_06/source/ti/devices/msp/msp.h \
  C:/ti/mspm0_sdk_2_04_00_06/source/ti/devices/DeviceFamily.h \

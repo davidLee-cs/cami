@@ -79,7 +79,7 @@ void batteryCheck(void);
 
 #define DELAY (24000000/1000000)
 
-#define LOW_DELTA_THRESHOLD       (60.0L)     // 실험치 측정 필요 2.6 V ->56 lux
+#define LOW_DELTA_THRESHOLD       (14.0L)     // 실험치 측정 필요 2.68 V ->14 lux
 #define NIGHT_THRESHOLD           (10.0L)    // 밤 실험치 측정 필요
 
 // --- 필터링 파라미터 ---
@@ -128,18 +128,19 @@ bool bflag;
 uint16_t optid;
 uint16_t mxc1d;
 double optlux;
-double ledOn_lux;
-double ledOff_lux;
+double ledOn_lux[10];
+double ledOff_lux[10];
 uint16_t opt300checkCnt;
+uint16_t optMeasureCnt;
 uint16_t optBrightCnt;
 uint16_t optDarkCnt;
 uint16_t fishcheckCnt;
 uint16_t lowVoltCnt;
 uint16_t fishEndCnt;
 volatile bool gTogglePolicy;
-static bool gFish_Red;
+bool gFish_Red;
 static bool gLED_On;
-static bool gNowNight = true;
+bool gNowNight = true;
 static bool gAllLedOff = false;
 static bool gLowVoltage = false;
 bool bUpstate = false;
@@ -171,8 +172,8 @@ AccelerationData accel_history[MOVING_AVERAGE_WINDOW_SIZE];
 int16_t history_index = 0;
 
 // 입질 감지를 위한 임계값 (Z축, 조정 필요)
-#define ACCELERATION_THRESHOLD_0_Z      (0.01f)//1.0 // Z축 변화량 임계값 (조정 필요)
-#define ACCELERATION_THRESHOLD_1_Z      (0.007f)//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_0_Z      (0.09f)//1.0 // Z축 변화량 임계값 (조정 필요)
+#define ACCELERATION_THRESHOLD_1_Z      (0.09f)//1.0 // Z축 변화량 임계값 (조정 필요)
 #define SIGNIFICANT_MOVEMENT_DURATION   3 // 연속된 움직임 감지 횟수 (조정 필요)
 #define SLOW_DROP_THRESHOLD             (0.02f)
 #define SLOW_DROP_DURATION_COUNTS   3      // 200 ms → 2샘플, 300 ms → 3샘플
@@ -206,7 +207,8 @@ static uint32_t last_detect_time = 0;
 float raw_z;
 float prev_raw_z;
 float z_delta;
-
+float prev_z_delta;
+float zz_check;
 
 // 추가 설정
 #define VERTICAL_STABLE_DURATION_MS  50    // 2초  수직 상태가 연속 유지돼야 하는 시간
@@ -414,7 +416,7 @@ int main(){
 
     NVIC_EnableIRQ(TIMER_0_INST_INT_IRQN);
     // NVIC_EnableIRQ(TIMER_1_INST_INT_IRQN);
-
+ 
     NVIC_EnableIRQ(I2C_INST_INT_IRQN);
     DL_SYSCTL_disableSleepOnExit();
 
@@ -441,9 +443,9 @@ int main(){
         accel_history[i] = (AccelerationData){0.0, 0.0, 0.0};
     }
     modeSel = MODE_CHECK;
-
     while(1){
-
+    
+#if 1
         gTogglePolicy = false;
         DL_I2C_disablePower(I2C_INST);
         DL_SYSCTL_setPowerPolicySTANDBY0();
@@ -489,7 +491,7 @@ int main(){
 
                 if(modeCheckCnt++ > 40)     // 4초
                 {
-                    __BKPT(0);
+                    // __BKPT(0);
 
                     if(downCnt_zAxis == 2)  // 민감 모드
                     {
@@ -563,14 +565,14 @@ int main(){
             case SMART_CHEMI :
 
                 // 조도 몇 배터리 모니터링 기능
-                if(opt300checkCnt++ >= OPTTIME_20MIN){   
-                    ledOn_lux = ti_opt3007_readLux();       // led + 주변환경 밝기 
+                if(opt300checkCnt++ >= OPTTIME_30SEC){   
+                    ledOn_lux[optMeasureCnt] = ti_opt3007_readLux();       // led + 주변환경 밝기 
 
                     DL_GPIO_setPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN);   // GRN OFF
                     DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-                    delay_cycles(1200000);
-                    ledOff_lux = ti_opt3007_readLux();      // 주변밝기
-                    optlux = (ledOn_lux > ledOff_lux) ? (ledOn_lux - ledOff_lux) : 100.0;
+                    delay_cycles(12000000);
+                    ledOff_lux[optMeasureCnt] = ti_opt3007_readLux();      // 주변밝기
+                    optlux = (ledOn_lux[0] > ledOff_lux[0]) ? (ledOn_lux[0] - ledOff_lux[0]) : 100.0;
 
                     if(gNowNight == true) {
                         DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN_1_PIN); // GRN ON
@@ -582,20 +584,25 @@ int main(){
                         gLowVoltage = true;
                     }
 
-                    if(ledOff_lux < NIGHT_THRESHOLD) {
+                    if(ledOff_lux[optMeasureCnt] < NIGHT_THRESHOLD) {
                         optDarkCnt++;
                     }
                     else {
                         optBrightCnt++;
                     }
 
-                    if(opt300checkCnt >= OPTTIME_20MIN + 5)
+                    optMeasureCnt++;      
+                    
+                    if(opt300checkCnt >= OPTTIME_30SEC + 5)
                     {
+
                         if(optDarkCnt >= 3) {
                             gNowNight = true;
+                            optMeasureCnt = 0;
                         }
                         else if (optBrightCnt >= 3){
                             gNowNight = false;
+                            optMeasureCnt = 0;
                         }
 
                         optBrightCnt = 0;
@@ -604,10 +611,12 @@ int main(){
                     }
                     else{
                         gNowNight = false;
-                    }
+                    }                                  
                 }
 
-                // gLED_On = true;
+                
+                // gNowNight = true;
+                // gLowVoltage = false;
                 // 입질 기능
                 if(gNowNight == true){    // 즉 아래 기능은 밤에만 작동하도록 함.
 
@@ -619,12 +628,13 @@ int main(){
  #if 1
                     raw_z = (float)current_accel.z;
                     z_delta = fabsf(high_pass_filter(raw_z));
-
-                    bool fast_detected  = (z_delta > threshold_level_z);
+                    zz_check = fabsf(prev_z_delta - z_delta);
+                    bool fast_detected  = ( zz_check > threshold_level_z);
 
                     // 3) 느린 드리프트 감지 (연속 SLOW_DROP_DURATION_COUNTS샘플 유지)
                     bool slow_detected = false;
-                    drop = prev_raw_z - raw_z;
+                    drop = fabsf(prev_raw_z - low_freq);
+                    // drop = prev_raw_z - raw_z;
 
                     if (drop > SLOW_DROP_THRESHOLD) {
                         significant_movement_count++;
@@ -652,11 +662,11 @@ int main(){
                         in_lockout  = true;
                         lockout_cnt = 0;
                         // → 이곳에 입질 시 실행할 액션 추가
-                    } else {
-                        gFish_Red = false;
-                    }
+                    } 
 
-                    prev_raw_z = raw_z;
+                    prev_z_delta = z_delta;
+                    prev_raw_z = low_freq;
+                    // prev_raw_z = raw_z;
 
 #else
 
@@ -745,7 +755,7 @@ int main(){
                             testcnt[5]++;
                         }
                         DL_GPIO_setPins(LED_RED_PORT, LED_RED_PIN_0_PIN);           // RED OFF
-
+                        fishcheckCnt = 0;
                     }
                 }
                 else {
@@ -764,10 +774,12 @@ int main(){
         }
         
         gTogglePolicy = false;
-
+#endif
     };
 
+
 	return 0;
+
 }
 
 

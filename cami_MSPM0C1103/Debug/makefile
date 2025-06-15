@@ -17,7 +17,7 @@ ORDERED_OBJS += \
 "./application/bma530.o" \
 "./application/bma530_features.o" \
 "./application/common.o" \
-"./application/main_ver1p2.o" \
+"./application/main_ver1p3.o" \
 "./application/opt3007_functions.o" \
 "./application/opt3007_hostControl.o" \
 "./application/opt3007_registers.o" \
@@ -132,29 +132,29 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-cami_MSPM0C1103.out 
+chemi_MSPM0C1104_ver1p0.out 
 
 EXE_OUTPUTS__QUOTED += \
-"cami_MSPM0C1103.out" 
+"chemi_MSPM0C1104_ver1p0.out" 
 
 
 # All Target
 all: $(OBJS) $(GEN_CMDS)
-	@$(MAKE) --no-print-directory -Onone "cami_MSPM0C1103.out"
+	@$(MAKE) --no-print-directory -Onone "chemi_MSPM0C1104_ver1p0.out"
 
 # Tool invocations
-cami_MSPM0C1103.out: $(OBJS) $(GEN_CMDS)
+chemi_MSPM0C1104_ver1p0.out: $(OBJS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/bin/tiarmclang.exe" @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -gdwarf-3 -Wl,-m"cami_MSPM0C1103.map" -Wl,-i"C:/ti/mspm0_sdk_2_04_00_06/source" -Wl,-i"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103" -Wl,-i"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/Debug/syscfg" -Wl,-i"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="cami_MSPM0C1103_linkInfo.xml" -Wl,--rom_model -o "cami_MSPM0C1103.out" $(ORDERED_OBJS)
+	"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/bin/tiarmclang.exe" @"device.opt"  -march=thumbv6m -mcpu=cortex-m0plus -mfloat-abi=soft -mlittle-endian -mthumb -O2 -gdwarf-3 -Wl,-m"chemi_MSPM0C1104_ver1p0.map" -Wl,-i"C:/ti/mspm0_sdk_2_04_00_06/source" -Wl,-i"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103" -Wl,-i"C:/_IdeaSpark/FirmWare_Project/4Bdream/CAMI/cami_MSPM0C1103/Debug/syscfg" -Wl,-i"C:/ti/ccs2001/ccs/tools/compiler/ti-cgt-armllvm_4.0.1.LTS/lib" -Wl,--diag_wrap=off -Wl,--display_error_number -Wl,--warn_sections -Wl,--xml_link_info="chemi_MSPM0C1104_ver1p0_linkInfo.xml" -Wl,--rom_model -o "chemi_MSPM0C1104_ver1p0.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(GEN_MISC_FILES__QUOTED)$(GEN_FILES__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "ti_msp_dl_config.o" "startup_mspm0c110x_ticlang.o" "application\accelerometer.o" "application\bma5.o" "application\bma530.o" "application\bma530_features.o" "application\common.o" "application\main_ver1p2.o" "application\opt3007_functions.o" "application\opt3007_hostControl.o" "application\opt3007_registers.o" 
-	-$(RM) "ti_msp_dl_config.d" "startup_mspm0c110x_ticlang.d" "application\accelerometer.d" "application\bma5.d" "application\bma530.d" "application\bma530_features.d" "application\common.d" "application\main_ver1p2.d" "application\opt3007_functions.d" "application\opt3007_hostControl.d" "application\opt3007_registers.d" 
+	-$(RM) "ti_msp_dl_config.o" "startup_mspm0c110x_ticlang.o" "application\accelerometer.o" "application\bma5.o" "application\bma530.o" "application\bma530_features.o" "application\common.o" "application\main_ver1p3.o" "application\opt3007_functions.o" "application\opt3007_hostControl.o" "application\opt3007_registers.o" 
+	-$(RM) "ti_msp_dl_config.d" "startup_mspm0c110x_ticlang.d" "application\accelerometer.d" "application\bma5.d" "application\bma530.d" "application\bma530_features.d" "application\common.d" "application\main_ver1p3.d" "application\opt3007_functions.d" "application\opt3007_hostControl.d" "application\opt3007_registers.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
